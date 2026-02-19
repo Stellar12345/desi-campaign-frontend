@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "@/contexts/ToastContext";
+import { convertToEmailHtml } from "@/components/campaigns/CampaignEmailEditor";
 
 interface StepPublishProps {
   onPrevious: () => void;
@@ -30,7 +31,7 @@ export default function StepPublish({ onPrevious }: StepPublishProps) {
           id: finalCampaignId,
           payload: {
             ...wizardData.basicInfo,
-            htmlBody: wizardData.emailContent.htmlBody,
+            htmlBody: convertToEmailHtml(wizardData.emailContent.htmlBody),
             textBody: wizardData.emailContent.textBody,
             contacts: wizardData.contacts,
           },
@@ -39,7 +40,7 @@ export default function StepPublish({ onPrevious }: StepPublishProps) {
         // If no campaign ID, create the campaign first
         const created = await createCampaign.mutateAsync({
           ...wizardData.basicInfo,
-          htmlBody: wizardData.emailContent.htmlBody,
+          htmlBody: convertToEmailHtml(wizardData.emailContent.htmlBody),
           textBody: wizardData.emailContent.textBody,
           contacts: wizardData.contacts,
         });

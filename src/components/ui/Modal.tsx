@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -19,6 +19,16 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
     lg: "max-w-2xl",
     xl: "max-w-4xl",
   };
+
+  // Prevent background scrolling while modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   return (
     <div

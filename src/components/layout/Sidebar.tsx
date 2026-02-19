@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, Menu, X, Mail } from "lucide-react";
+import { LayoutDashboard, Users, Menu, X, Mail, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/utils/cn";
 
@@ -7,6 +7,7 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Users", href: "/users", icon: Users },
   { name: "Campaigns", href: "/campaigns", icon: Mail },
+  { name: "Published Campaigns", href: "/campaigns/published", icon: CheckCircle2 },
 ];
 
 export default function Sidebar() {
@@ -54,10 +55,13 @@ export default function Sidebar() {
           <nav className="flex-1 px-4 py-6 space-y-1">
             {navigation.map((item) => {
               const Icon = item.icon;
+              // Use 'end' prop for /campaigns to only match exactly, not /campaigns/published
+              const isExactMatch = item.href === "/campaigns";
               return (
                 <NavLink
                   key={item.name}
                   to={item.href}
+                  end={isExactMatch}
                   onClick={() => setIsMobileOpen(false)}
                   className={({ isActive }) =>
                     cn(

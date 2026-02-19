@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
 import { useCampaignWizard } from "@/contexts/CampaignWizardContext";
 import Stepper from "./Stepper";
@@ -25,6 +25,7 @@ interface CampaignWizardProps {
 export default function CampaignWizard({ campaignId }: CampaignWizardProps) {
   const { wizardData, nextStep, prevStep, setStep } = useCampaignWizard();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   
   // Handle step query parameter from URL
   useEffect(() => {
@@ -65,15 +66,27 @@ export default function CampaignWizard({ campaignId }: CampaignWizardProps) {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {campaignId ? "Edit Campaign" : "Create Campaign"}
-          </h1>
-          <p className="text-gray-600">
-            {campaignId
-              ? "Edit your campaign and publish when ready"
-              : "Follow the steps to create and publish your campaign"}
-          </p>
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {campaignId ? "Edit Campaign" : "Create Campaign"}
+            </h1>
+            <p className="text-gray-600">
+              {campaignId
+                ? "Edit your campaign and publish when ready"
+                : "Follow the steps to create and publish your campaign"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/campaigns")}
+            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+          >
+            <span className="inline-block rounded-full border border-gray-300 px-2 py-1 text-xs font-medium mr-1">
+              ←
+            </span>
+            Back to Campaigns
+          </button>
         </div>
 
         {/* Stepper */}

@@ -37,6 +37,15 @@ export function usePublishedCampaigns() {
   });
 }
 
+// Get published campaigns with pagination (for listing page)
+export function usePublishedCampaignsPaginated(page: number, resultsPerPage: number) {
+  return useQuery({
+    queryKey: ["campaigns", "published", page, resultsPerPage] as const,
+    queryFn: () => campaignsApi.getPublishedPaginated(page, resultsPerPage),
+    keepPreviousData: true,
+  });
+}
+
 // Get single campaign
 export function useCampaign(id: string) {
   return useQuery({

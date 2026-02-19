@@ -6,6 +6,7 @@ import type {
   PublishCampaignPayload,
   ApiResponse,
   PaginatedUsersResponse,
+  PaginatedCampaignsResponse,
   CampaignSummary,
   CampaignSummaryById,
 } from "@/types";
@@ -26,6 +27,17 @@ export const campaignsApi = {
       return (data as any).items;
     }
     return [];
+  },
+
+  // Get published campaigns with pagination
+  getPublishedPaginated: async (
+    page: number,
+    resultsPerPage: number
+  ): Promise<PaginatedCampaignsResponse> => {
+    const response = await apiClient.get<ApiResponse<PaginatedCampaignsResponse>>(
+      `/private/campaigns?status=PUBLISHED&page=${page}`
+    );
+    return response.data.data;
   },
 
   // Get single campaign

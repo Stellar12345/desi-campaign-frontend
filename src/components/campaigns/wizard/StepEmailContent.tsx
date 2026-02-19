@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useCampaignWizard } from "@/contexts/CampaignWizardContext";
 import { useCreateCampaign, useUpdateCampaign } from "@/hooks/useCampaigns";
 import Button from "@/components/ui/Button";
+import { CampaignEmailEditor } from "@/components/campaigns/CampaignEmailEditor";
 
 const emailContentSchema = z.object({
   textBody: z.string().optional(),
@@ -30,6 +31,7 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
     watch,
     formState: { errors, isValid },
     reset,
+    setValue,
   } = useForm<EmailContentFormData>({
     resolver: zodResolver(emailContentSchema),
     defaultValues: wizardData.emailContent,
@@ -195,25 +197,17 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Text Body
-              </label>
-              <textarea
-                {...register("textBody")}
-                rows={8}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Plain text version (optional)"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 HTML Body <span className="text-red-500">*</span>
               </label>
-              <textarea
-                {...register("htmlBody")}
-                rows={12}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                placeholder="<html>...</html>"
+              <CampaignEmailEditor
+                value={htmlBody || ""}
+                disabled={isSavingDraft}
+                onChange={(content) =>
+                  setValue("htmlBody", content, {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
+                }
               />
               {errors.htmlBody && (
                 <p className="mt-1 text-sm text-red-600">{errors.htmlBody.message}</p>

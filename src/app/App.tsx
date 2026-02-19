@@ -8,6 +8,7 @@ import UserDetailsPage from "@/pages/UserDetailsPage";
 import CampaignWizard from "@/components/campaigns/wizard/CampaignWizard";
 import CampaignsPage from "@/pages/CampaignsPage";
 import CampaignSummaryPage from "@/pages/CampaignSummaryPage";
+import PublishedCampaignsPage from "@/pages/PublishedCampaignsPage";
 import { useCampaign } from "@/hooks/useCampaigns";
 import Skeleton from "@/components/ui/Skeleton";
 import { ToastProvider } from "@/contexts/ToastContext";
@@ -65,7 +66,8 @@ function App() {
                       <Route path="/users" element={<UsersPage />} />
                       <Route path="/users/:id" element={<UserDetailsPage />} />
                       <Route path="/campaigns" element={<CampaignsPage />} />
-                            <Route path="/campaigns/:id/summary" element={<CampaignSummaryPage />} />
+                      <Route path="/campaigns/published" element={<PublishedCampaignsPage />} />
+                      <Route path="/campaigns/:id/summary" element={<CampaignSummaryPage />} />
                     </Routes>
                   </Layout>
                 </CampaignWizardProvider>

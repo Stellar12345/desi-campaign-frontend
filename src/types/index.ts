@@ -66,6 +66,21 @@ export interface PaginatedUsersResponse {
   };
 }
 
+export interface PaginatedCampaignsResponse {
+  items: Campaign[];
+  pageInfo: {
+    totalResults: number;
+    pageCount: number;
+    resultsPerPage: number;
+    currentPage: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+    nextPage: number | null;
+    prevPage: number | null;
+  };
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -80,11 +95,20 @@ export interface Campaign {
   channelCode: string;
   apiProvider: string;
   subject: string;
-  textBody?: string;
-  htmlBody?: string;
+  textBody?: string | null;
+  htmlBody?: string | null;
   status: "DRAFT" | "PUBLISHED" | "SENT" | "FAILED";
   createdAt: string;
   updatedAt: string;
+  scheduledAt?: string | null;
+  sentAt?: string | null;
+  totalRecipients?: number;
+  sentCount?: number;
+  deliveredCount?: number;
+  openedCount?: number;
+  clickedCount?: number;
+  failedCount?: number;
+  isDeleted?: boolean;
   contacts?: CampaignContact[];
 }
 
