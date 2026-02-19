@@ -19,7 +19,7 @@ interface StepEmailContentProps {
 }
 
 export default function StepEmailContent({ onNext, onPrevious }: StepEmailContentProps) {
-  const { wizardData, updateEmailContent, campaignId } = useCampaignWizard();
+  const { wizardData, updateEmailContent, campaignId, setCampaignId } = useCampaignWizard();
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign();
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -46,22 +46,67 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
   const onSubmit = async (data: EmailContentFormData) => {
     updateEmailContent(data);
     
-    // Auto-save when editing existing campaign
-    if (campaignId) {
-      setIsSavingDraft(true);
-      try {
+    // Auto-save draft when moving to next step
+    setIsSavingDraft(true);
+    try {
+      if (campaignId) {
+        // UPDATE: Campaign exists, use PUT to update - send ALL current wizard data
+        console.log("🔄 Updating existing campaign:", campaignId);
+        const updatePayload: any = {
+          // Basic info from previous steps
+          name: wizardData.basicInfo.name,
+          channelCode: wizardData.basicInfo.channelCode,
+          apiProvider: wizardData.basicInfo.apiProvider,
+          subject: wizardData.basicInfo.subject,
+          // Current step data
+          htmlBody: data.htmlBody,
+          status: "DRAFT", // Always keep status as DRAFT when updating
+        };
+        // Only include textBody if it has a value
+        if (data.textBody && data.textBody.trim() !== "") {
+          updatePayload.textBody = data.textBody;
+        }
+        // Include contacts from previous/current steps
+        if (wizardData.contacts && wizardData.contacts.length > 0) {
+          updatePayload.contacts = wizardData.contacts;
+        }
+        
         await updateCampaign.mutateAsync({
           id: campaignId,
-          payload: {
-            htmlBody: data.htmlBody,
-            textBody: data.textBody,
-          },
+          payload: updatePayload,
         });
-      } catch (error) {
-        console.error("Failed to save:", error);
-      } finally {
-        setIsSavingDraft(false);
+      } else {
+        // CREATE: First time only, use POST to create (if basic info exists)
+        if (wizardData.basicInfo.name && wizardData.basicInfo.subject) {
+          console.log("✨ Creating new campaign (first time)");
+          const createPayload: any = {
+            ...wizardData.basicInfo,
+            htmlBody: data.htmlBody,
+            status: "DRAFT", // Always set status to DRAFT for new campaigns
+          };
+          // Only include textBody if it exists
+          if (data.textBody && data.textBody.trim() !== "") {
+            createPayload.textBody = data.textBody;
+          }
+          // Only include contacts if they exist
+          if (wizardData.contacts && wizardData.contacts.length > 0) {
+            createPayload.contacts = wizardData.contacts;
+          } else {
+            createPayload.contacts = [];
+          }
+          
+          const newCampaign = await createCampaign.mutateAsync(createPayload);
+          // Store the campaign ID for subsequent steps - now all future saves will be UPDATE
+          if (newCampaign?.id) {
+            setCampaignId(newCampaign.id);
+            console.log("✅ Campaign created with ID:", newCampaign.id);
+          }
+        }
       }
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+    } finally {
+      setIsSavingDraft(false);
     }
     
     onNext();
@@ -74,20 +119,56 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
 
     try {
       if (campaignId) {
+        // UPDATE: Campaign exists, use PUT to update - send ALL current wizard data
+        console.log("🔄 Updating existing campaign:", campaignId);
+        const updatePayload: any = {
+          // Basic info from previous steps
+          name: wizardData.basicInfo.name,
+          channelCode: wizardData.basicInfo.channelCode,
+          apiProvider: wizardData.basicInfo.apiProvider,
+          subject: wizardData.basicInfo.subject,
+          // Current step data
+          htmlBody: formData.htmlBody,
+          status: "DRAFT", // Always keep status as DRAFT when updating
+        };
+        // Only include textBody if it has a value
+        if (formData.textBody && formData.textBody.trim() !== "") {
+          updatePayload.textBody = formData.textBody;
+        }
+        // Include contacts from previous/current steps
+        if (wizardData.contacts && wizardData.contacts.length > 0) {
+          updatePayload.contacts = wizardData.contacts;
+        }
+        
         await updateCampaign.mutateAsync({
           id: campaignId,
-          payload: {
-            htmlBody: formData.htmlBody,
-            textBody: formData.textBody,
-          },
+          payload: updatePayload,
         });
       } else {
-        await createCampaign.mutateAsync({
+        // CREATE: First time only, use POST to create
+        console.log("✨ Creating new campaign (first time)");
+        const createPayload: any = {
           ...wizardData.basicInfo,
           htmlBody: formData.htmlBody,
-          textBody: formData.textBody,
-          contacts: [],
-        });
+          status: "DRAFT", // Always set status to DRAFT for new campaigns
+        };
+        // Only include textBody if it exists
+        if (formData.textBody && formData.textBody.trim() !== "") {
+          createPayload.textBody = formData.textBody;
+        }
+        // Only include contacts if they exist
+        if (wizardData.contacts && wizardData.contacts.length > 0) {
+          createPayload.contacts = wizardData.contacts;
+        } else {
+          createPayload.contacts = [];
+        }
+        
+        const newCampaign = await createCampaign.mutateAsync(createPayload);
+        // Store the campaign ID for subsequent steps - now all future saves will be UPDATE
+        if (newCampaign?.id) {
+          setCampaignId(newCampaign.id);
+          console.log("✅ Campaign created with ID:", newCampaign.id);
+        }
       }
     } catch (error) {
       console.error("Failed to save draft:", error);

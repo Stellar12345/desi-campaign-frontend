@@ -4,6 +4,7 @@ import { usePublishCampaign, useCreateCampaign, useUpdateCampaign } from "@/hook
 import Button from "@/components/ui/Button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useToastContext } from "@/contexts/ToastContext";
 
 interface StepPublishProps {
   onPrevious: () => void;
@@ -15,6 +16,7 @@ export default function StepPublish({ onPrevious }: StepPublishProps) {
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign();
   const navigate = useNavigate();
+  const { showSuccess, showError } = useToastContext();
   const [isPublishing, setIsPublishing] = useState(false);
 
   const handlePublish = async () => {
@@ -50,15 +52,54 @@ export default function StepPublish({ onPrevious }: StepPublishProps) {
       }
 
       // Publish the campaign
-      await publishCampaign.mutateAsync({
+      const publishResponse = await publishCampaign.mutateAsync({
         campaignId: finalCampaignId,
       });
 
-      // Reset wizard and redirect
-      resetWizard();
-      navigate("/campaigns");
-    } catch (error) {
+      // Show success notification with campaign details
+      if (publishResponse && typeof publishResponse === 'object') {
+        const responseData = (publishResponse as any).data;
+        if (responseData) {
+          const sent = responseData.sent || 0;
+          const failed = responseData.failed || 0;
+          const totalRecipients = responseData.totalRecipients || 0;
+          const emails = responseData.emails || [];
+          
+          const message = `Sent to ${sent} recipient(s)${failed > 0 ? `, ${failed} failed` : ""}. Total: ${totalRecipients}${emails.length > 0 ? ` (${emails.slice(0, 3).join(", ")}${emails.length > 3 ? "..." : ""})` : ""}`;
+          
+          showSuccess(
+            "Campaign Published Successfully!",
+            message,
+            8000 // Show for 8 seconds
+          );
+        } else {
+          showSuccess(
+            "Campaign Published Successfully!",
+            (publishResponse as any).message || "Your campaign has been sent to all selected recipients.",
+            5000
+          );
+        }
+      } else {
+        showSuccess(
+          "Campaign Published Successfully!",
+          "Your campaign has been sent to all selected recipients.",
+          5000
+        );
+      }
+
+      // Reset wizard and redirect after a short delay to show notification
+      setTimeout(() => {
+        resetWizard();
+        navigate("/campaigns");
+      }, 1000);
+    } catch (error: any) {
       console.error("Failed to publish campaign:", error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to publish campaign";
+      showError(
+        "Publish Failed",
+        errorMessage,
+        6000
+      );
     } finally {
       setIsPublishing(false);
     }

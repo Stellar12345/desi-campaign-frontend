@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import type { User, CreateUserPayload, UpdateUserPayload } from "@/types";
+import { useDeleteContact } from "@/hooks/useUsers";
 
 // Dynamic validation based on channel code
 const contactSchema = z
@@ -15,19 +16,25 @@ const contactSchema = z
     userId: z.string().optional(),
     name: z.string().min(1, "Name is required"),
     channelCode: z.string().min(1, "Channel code is required"),
-    email: z.string().optional(),
-    phone: z.string().optional(),
-    street: z.string().optional(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    country: z.string().optional(),
-    postalCode: z.string().optional(),
+    email: z.string().nullable().optional().transform(val => val ?? ""),
+    phone: z.string().nullable().optional().transform(val => val ?? ""),
+    street: z.string().nullable().optional().transform(val => val ?? ""),
+    city: z.string().nullable().optional().transform(val => val ?? ""),
+    state: z.string().nullable().optional().transform(val => val ?? ""),
+    country: z.string().nullable().optional().transform(val => val ?? ""),
+    postalCode: z.string().nullable().optional().transform(val => val ?? ""),
     useSameAddress: z.boolean().optional(),
   })
   .refine(
     (data) => {
+      // Only validate email if it's provided and channel requires it
       if (data.channelCode === "EMAIL" || data.channelCode === "EMAIL_AND_WHATSAPP") {
-        return data.email && z.string().email().safeParse(data.email).success;
+        // If email field has a value, it must be valid
+        if (data.email && data.email.trim() !== "") {
+          return z.string().email().safeParse(data.email).success;
+        }
+        // Empty email is allowed - will be validated at submit time if needed
+        return true;
       }
       return true;
     },
@@ -38,64 +45,40 @@ const contactSchema = z
   )
   .refine(
     (data) => {
+      // Only validate phone if it's provided and channel requires it
       if (
-        data.channelCode === "SMS" ||
         data.channelCode === "WHATSAPP" ||
         data.channelCode === "EMAIL_AND_WHATSAPP"
       ) {
-        return data.phone && data.phone.length > 0;
+        // If phone field has a value, it must not be empty
+        if (data.phone && data.phone.trim() !== "") {
+          return data.phone.length > 0;
+        }
+        // Empty phone is allowed - will be validated at submit time if needed
+        return true;
       }
       return true;
     },
     {
-      message: "Phone is required for SMS/WHATSAPP channel",
+      message: "Phone is required for WHATSAPP channel",
       path: ["phone"],
     }
   );
 
 const userSchema = z
   .object({
-    name: z.string().min(1, "Name is required"),
-    channelCode: z.string().min(1, "Channel code is required"),
-    email: z.string().optional(),
-    phone: z.string().optional(),
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().nullable().optional().transform(val => val ?? ""),
+    phone: z.string().nullable().optional().transform(val => val ?? ""),
     contacts: z.array(contactSchema).optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.channelCode === "EMAIL" || data.channelCode === "EMAIL_AND_WHATSAPP") {
-        return data.email && z.string().email().safeParse(data.email).success;
-      }
-      return true;
-    },
-    {
-      message: "Valid email is required for EMAIL channel",
-      path: ["email"],
-    }
-  )
-  .refine(
-    (data) => {
-      if (
-        data.channelCode === "SMS" ||
-        data.channelCode === "WHATSAPP" ||
-        data.channelCode === "EMAIL_AND_WHATSAPP"
-      ) {
-        return data.phone && data.phone.length > 0;
-      }
-      return true;
-    },
-    {
-      message: "Phone is required for SMS/WHATSAPP channel",
-      path: ["phone"],
-    }
-  );
+  });
 
+// Only allow EMAIL, WHATSAPP, and EMAIL_AND_WHATSAPP
 const channelCodeOptions = [
   { value: "EMAIL", label: "EMAIL" },
-  { value: "SMS", label: "SMS" },
   { value: "WHATSAPP", label: "WHATSAPP" },
   { value: "EMAIL_AND_WHATSAPP", label: "EMAIL_AND_WHATSAPP" },
-  { value: "PUSH", label: "PUSH" },
 ];
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -108,18 +91,23 @@ interface UserFormProps {
 }
 
 export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFormProps) {
+  const deleteContact = useDeleteContact();
+  
   const {
     register,
     control,
     handleSubmit,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
+    mode: "onSubmit",
+    reValidateMode: "onSubmit",
     defaultValues: {
-      name: user ? `${user.firstName} ${user.lastName}`.trim() : "",
-      channelCode: user?.contacts?.[0]?.channelCode || "EMAIL",
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
       email: user?.email || "",
       phone: user?.phoneNo || "",
       contacts: user
@@ -161,18 +149,36 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
     name: "contacts",
   });
 
+  // Handle contact deletion - call API if contact has ID, otherwise just remove from form
+  const handleDeleteContact = async (index: number) => {
+    const contacts = getValues("contacts");
+    const contactToDelete = contacts?.[index];
+    
+    // If contact has an ID, delete it from the backend
+    if (contactToDelete?.id) {
+      try {
+        await deleteContact.mutateAsync(contactToDelete.id);
+        // Remove from form after successful deletion
+        remove(index);
+      } catch (error) {
+        console.error("Failed to delete contact:", error);
+        // Optionally show error message to user
+      }
+    } else {
+      // If no ID, just remove from form (new contact that wasn't saved yet)
+      remove(index);
+    }
+  };
+
   // Watch basic info fields
-  const basicChannelCode = useWatch({ control, name: "channelCode" });
   const basicEmail = useWatch({ control, name: "email" });
   const basicPhone = useWatch({ control, name: "phone" });
-  const basicName = useWatch({ control, name: "name" });
 
   // Helper function to get contact name based on channel code
   const getContactName = (channelCode: string) => {
     if (channelCode === "EMAIL") return "Email Contact";
     if (channelCode === "WHATSAPP") return "WhatsApp Contact";
     if (channelCode === "EMAIL_AND_WHATSAPP") return "Email and WhatsApp Contact";
-    if (channelCode === "SMS") return "SMS Contact";
     return "Contact";
   };
 
@@ -181,52 +187,74 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
     if (index !== null) {
       setValue(`contacts.${index}.channelCode`, value);
       setValue(`contacts.${index}.name`, getContactName(value));
-    } else {
-      setValue("channelCode", value);
-      // Sync basic channel code with first contact when creating new user
-      if (!user && fields.length > 0) {
-        setValue(`contacts.0.channelCode`, value);
-        setValue(`contacts.0.name`, getContactName(value));
-      }
     }
   };
 
-  // Sync basic info email/phone with first contact when creating new user
+  // Sync contact email/phone to basic info fields (hidden from UI)
   useEffect(() => {
-    if (!user && fields.length > 0) {
-      const firstContactEmail = watch(`contacts.0.email`);
-      const firstContactPhone = watch(`contacts.0.phone`);
-      const firstContactChannelCode = watch(`contacts.0.channelCode`);
-
-      // If first contact email is empty and basic email exists, sync it
-      if (!firstContactEmail && basicEmail) {
-        if (firstContactChannelCode === "EMAIL" || firstContactChannelCode === "EMAIL_AND_WHATSAPP") {
-          setValue(`contacts.0.email`, basicEmail);
-        }
-      }
-
-      // If first contact phone is empty and basic phone exists, sync it
-      if (!firstContactPhone && basicPhone) {
-        if (
-          firstContactChannelCode === "SMS" ||
-          firstContactChannelCode === "WHATSAPP" ||
-          firstContactChannelCode === "EMAIL_AND_WHATSAPP"
-        ) {
-          setValue(`contacts.0.phone`, basicPhone);
+    const contacts = watch("contacts") || [];
+    
+    // Find email from contacts (prioritize EMAIL or EMAIL_AND_WHATSAPP)
+    let emailFromContact = "";
+    for (const contact of contacts) {
+      if (contact?.email && contact.email.trim() !== "") {
+        if (contact.channelCode === "EMAIL" || contact.channelCode === "EMAIL_AND_WHATSAPP") {
+          emailFromContact = contact.email;
+          break;
         }
       }
     }
-  }, [basicEmail, basicPhone, user, fields.length]);
+    
+    // Find phone from contacts (prioritize WHATSAPP or EMAIL_AND_WHATSAPP)
+    let phoneFromContact = "";
+    for (const contact of contacts) {
+      if (contact?.phone && contact.phone.trim() !== "") {
+        if (contact.channelCode === "WHATSAPP" || contact.channelCode === "EMAIL_AND_WHATSAPP") {
+          phoneFromContact = contact.phone;
+          break;
+        }
+      }
+    }
+    
+    // Update basic info fields (hidden) with values from contacts
+    if (emailFromContact) {
+      setValue("email", emailFromContact, { shouldValidate: false });
+    }
+    if (phoneFromContact) {
+      setValue("phone", phoneFromContact, { shouldValidate: false });
+    }
+  }, [watch("contacts"), setValue, watch]);
 
   const handleFormSubmit = (data: UserFormData) => {
-    // Split name into firstName and lastName
-    const nameParts = data.name.trim().split(" ");
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.slice(1).join(" ") || "";
+    console.log("✅ Form submitted successfully! Data:", data);
+    console.log("✅ Contacts count:", data.contacts?.length || 0);
+    
+    // Use firstName and lastName directly from form
+    const firstName = data.firstName?.trim() || "";
+    const lastName = data.lastName?.trim() || "";
 
-    // Get primary email and phone from basic info
-    const primaryEmail = data.email || "";
-    const primaryPhone = data.phone || "";
+    // Get primary email and phone from contacts (synced to basic info)
+    // Find email from contacts
+    let primaryEmail = data.email || "";
+    for (const contact of (data.contacts || [])) {
+      if (contact?.email && contact.email.trim() !== "") {
+        if (contact.channelCode === "EMAIL" || contact.channelCode === "EMAIL_AND_WHATSAPP") {
+          primaryEmail = contact.email;
+          break;
+        }
+      }
+    }
+    
+    // Find phone from contacts
+    let primaryPhone = data.phone || "";
+    for (const contact of (data.contacts || [])) {
+      if (contact?.phone && contact.phone.trim() !== "") {
+        if (contact.channelCode === "WHATSAPP" || contact.channelCode === "EMAIL_AND_WHATSAPP") {
+          primaryPhone = contact.phone;
+          break;
+        }
+      }
+    }
 
     // Process contacts - handle "use same address" logic
     const processedContacts = (data.contacts || []).map((contact, idx) => {
@@ -249,7 +277,6 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
       if (contact.phone !== undefined && contact.phone !== null && contact.phone !== "") {
         contactData.phone = contact.phone;
       } else if (
-        contact.channelCode === "SMS" ||
         contact.channelCode === "WHATSAPP" ||
         contact.channelCode === "EMAIL_AND_WHATSAPP"
       ) {
@@ -293,48 +320,52 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
       contacts: processedContacts, // Use contacts from form (already includes default contact when creating)
     };
 
+    console.log("✅ Calling onSubmit with payload:", payload);
+    console.log("✅ Payload contacts:", processedContacts);
+    console.log("✅ User ID:", user?.id);
     onSubmit(payload);
   };
 
+  // Handle form errors - this will be called if validation fails
+  const handleFormError = (errors: any) => {
+    console.error("Form validation errors:", errors);
+    // Log specific contact errors to help debug
+    if (errors.contacts) {
+      errors.contacts.forEach((contactError: any, index: number) => {
+        if (contactError) {
+          console.error(`Contact ${index + 1} validation errors:`, contactError);
+          if (contactError.email) {
+            console.error(`  - Email error: ${contactError.email.message}`);
+          }
+          if (contactError.phone) {
+            console.error(`  - Phone error: ${contactError.phone.message}`);
+          }
+        }
+      });
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(handleFormSubmit, handleFormError)} className="space-y-6">
       {/* Basic Info */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-900">Basic Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
-            label="Name"
-            {...register("name")}
-            error={errors.name?.message}
-            placeholder="Enter full name"
+            label="First Name"
+            {...register("firstName")}
+            error={errors.firstName?.message}
+            placeholder="Enter first name"
           />
-          <Select
-            label="Channel Code"
-            {...register("channelCode", {
-              onChange: (e) => handleChannelCodeChange(null, e.target.value),
-            })}
-            error={errors.channelCode?.message}
-            options={channelCodeOptions}
+          <Input
+            label="Last Name"
+            {...register("lastName")}
+            error={errors.lastName?.message}
+            placeholder="Enter last name"
           />
-          {(basicChannelCode === "EMAIL" || basicChannelCode === "EMAIL_AND_WHATSAPP") && (
-            <Input
-              label="Email"
-              type="email"
-              {...register("email")}
-              error={errors.email?.message}
-              placeholder="Enter email address"
-            />
-          )}
-          {(basicChannelCode === "SMS" ||
-            basicChannelCode === "WHATSAPP" ||
-            basicChannelCode === "EMAIL_AND_WHATSAPP") && (
-            <Input
-              label="Phone"
-              {...register("phone")}
-              error={errors.phone?.message}
-              placeholder="Enter phone number"
-            />
-          )}
+          {/* Email and Phone fields are hidden - they sync automatically from contacts */}
+          <input type="hidden" {...register("email")} />
+          <input type="hidden" {...register("phone")} />
         </div>
       </div>
 
@@ -358,6 +389,7 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
                 country: "",
                 postalCode: "",
                 useSameAddress: false,
+                ...(user?.id && { userId: user.id }),
               })
             }
           >
@@ -385,7 +417,9 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => remove(index)}
+                  onClick={() => handleDeleteContact(index)}
+                  isLoading={deleteContact.isPending}
+                  disabled={deleteContact.isPending}
                 >
                   <Trash2 className="w-4 h-4 text-red-600" />
                 </Button>
@@ -400,7 +434,31 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
                     },
                   })}
                   error={errors.contacts?.[index]?.channelCode?.message}
-                  options={channelCodeOptions}
+                  options={(() => {
+                    // Get all contacts to determine restrictions
+                    const allContacts = watch("contacts") || [];
+                    
+                    // If this contact is EMAIL_AND_WHATSAPP, only allow that option
+                    if (contactChannelCode === "EMAIL_AND_WHATSAPP") {
+                      return [{ value: "EMAIL_AND_WHATSAPP", label: "EMAIL_AND_WHATSAPP" }];
+                    }
+                    
+                    // If first contact is EMAIL, second contact must be WHATSAPP
+                    if (index === 1 && allContacts[0]?.channelCode === "EMAIL") {
+                      return [{ value: "WHATSAPP", label: "WHATSAPP" }];
+                    }
+                    
+                    // If any contact is EMAIL_AND_WHATSAPP, disable other options for all contacts
+                    const hasEmailAndWhatsApp = allContacts.some(
+                      (c: any, i: number) => i !== index && c?.channelCode === "EMAIL_AND_WHATSAPP"
+                    );
+                    if (hasEmailAndWhatsApp) {
+                      return [{ value: "EMAIL_AND_WHATSAPP", label: "EMAIL_AND_WHATSAPP" }];
+                    }
+                    
+                    // Default: show all options
+                    return channelCodeOptions;
+                  })()}
                 />
                 {/* Hidden fields to preserve values when not shown */}
                 <input
@@ -428,8 +486,7 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
                   />
                 )}
                 {/* Always register phone field, even if not visible */}
-                {(contactChannelCode === "SMS" ||
-                  contactChannelCode === "WHATSAPP" ||
+                {(contactChannelCode === "WHATSAPP" ||
                   contactChannelCode === "EMAIL_AND_WHATSAPP") ? (
                   <Input
                     label="Phone"
@@ -539,11 +596,16 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        {/* Use explicit click handler so submit always runs handleFormSubmit */}
+        {/* Use type="submit" to properly trigger form validation */}
         <Button
-          type="button"
+          type="submit"
           isLoading={isLoading}
-          onClick={handleSubmit(handleFormSubmit)}
+          onClick={(e) => {
+            console.log("🔵 Update User button clicked!");
+            console.log("🔵 Form errors:", errors);
+            console.log("🔵 Form values:", getValues());
+            // Let the form handle submission naturally
+          }}
         >
           {user ? "Update User" : "Create User"}
         </Button>

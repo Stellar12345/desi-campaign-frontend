@@ -85,3 +85,15 @@ export function useHardDeleteUser() {
     },
   });
 }
+
+// Delete contact
+export function useDeleteContact() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (contactId: string) => usersApi.deleteContact(contactId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users });
+    },
+  });
+}

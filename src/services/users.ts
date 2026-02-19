@@ -49,4 +49,9 @@ export const usersApi = {
   hardDelete: async (id: string): Promise<void> => {
     await apiClient.delete(`/private/users/hard-delete/${id}`);
   },
+
+  // Delete contact
+  deleteContact: async (contactId: string): Promise<void> => {
+    await apiClient.delete(`/private/contact/${contactId}`);
+  },
 };

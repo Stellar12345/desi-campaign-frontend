@@ -10,6 +10,7 @@ import CampaignsPage from "@/pages/CampaignsPage";
 import CampaignSummaryPage from "@/pages/CampaignSummaryPage";
 import { useCampaign } from "@/hooks/useCampaigns";
 import Skeleton from "@/components/ui/Skeleton";
+import { ToastProvider } from "@/contexts/ToastContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,39 +37,43 @@ function CampaignWizardWrapper() {
   }
 
   return (
-    <CampaignWizardProvider campaignId={id} initialCampaign={campaign}>
-      <div className="min-h-screen bg-gray-50">
-        <CampaignWizard campaignId={id} />
-      </div>
-    </CampaignWizardProvider>
+    <ToastProvider>
+      <CampaignWizardProvider campaignId={id} initialCampaign={campaign}>
+        <div className="min-h-screen bg-gray-50">
+          <CampaignWizard campaignId={id} />
+        </div>
+      </CampaignWizardProvider>
+    </ToastProvider>
   );
 }
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/campaigns/new" element={<CampaignWizardWrapper />} />
-          <Route path="/campaigns/:id/edit" element={<CampaignWizardWrapper />} />
-          <Route
-            path="/*"
-            element={
-              <CampaignWizardProvider>
-                <Layout>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/users" element={<UsersPage />} />
-                    <Route path="/users/:id" element={<UserDetailsPage />} />
-                    <Route path="/campaigns" element={<CampaignsPage />} />
-                          <Route path="/campaigns/:id/summary" element={<CampaignSummaryPage />} />
-                  </Routes>
-                </Layout>
-              </CampaignWizardProvider>
-            }
-          />
-        </Routes>
-      </BrowserRouter>
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/campaigns/new" element={<CampaignWizardWrapper />} />
+            <Route path="/campaigns/:id/edit" element={<CampaignWizardWrapper />} />
+            <Route
+              path="/*"
+              element={
+                <CampaignWizardProvider>
+                  <Layout>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/users" element={<UsersPage />} />
+                      <Route path="/users/:id" element={<UserDetailsPage />} />
+                      <Route path="/campaigns" element={<CampaignsPage />} />
+                            <Route path="/campaigns/:id/summary" element={<CampaignSummaryPage />} />
+                    </Routes>
+                  </Layout>
+                </CampaignWizardProvider>
+              }
+            />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

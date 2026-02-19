@@ -23,7 +23,7 @@ interface StepBasicInfoProps {
 }
 
 export default function StepBasicInfo({ onNext }: StepBasicInfoProps) {
-  const { wizardData, updateBasicInfo, campaignId } = useCampaignWizard();
+  const { wizardData, updateBasicInfo, campaignId, setCampaignId } = useCampaignWizard();
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign();
   const [isSaving, setIsSaving] = useState(false);
@@ -57,24 +57,66 @@ export default function StepBasicInfo({ onNext }: StepBasicInfoProps) {
   const onSubmit = async (data: BasicInfoFormData) => {
     updateBasicInfo(data);
     
-    // Auto-save draft when moving to next step (if editing)
-    if (campaignId) {
-      setIsSaving(true);
-      try {
+    // Auto-save draft when moving to next step
+    setIsSaving(true);
+    try {
+      if (campaignId) {
+        // UPDATE: Campaign exists, use PUT to update - send ALL current wizard data
+        console.log("🔄 Updating existing campaign:", campaignId);
+        const updatePayload: any = {
+          // Current step data
+          name: data.name,
+          channelCode: data.channelCode,
+          apiProvider: data.apiProvider,
+          subject: data.subject,
+          status: "DRAFT", // Always keep status as DRAFT when updating
+        };
+        // Include email content from previous/current steps
+        if (wizardData.emailContent.htmlBody && wizardData.emailContent.htmlBody.trim() !== "") {
+          updatePayload.htmlBody = wizardData.emailContent.htmlBody;
+        }
+        if (wizardData.emailContent.textBody && wizardData.emailContent.textBody.trim() !== "") {
+          updatePayload.textBody = wizardData.emailContent.textBody;
+        }
+        // Include contacts from previous/current steps
+        if (wizardData.contacts && wizardData.contacts.length > 0) {
+          updatePayload.contacts = wizardData.contacts;
+        }
+        
         await updateCampaign.mutateAsync({
           id: campaignId,
-          payload: {
-            name: data.name,
-            channelCode: data.channelCode,
-            apiProvider: data.apiProvider,
-            subject: data.subject,
-          },
+          payload: updatePayload,
         });
-      } catch (error) {
-        console.error("Failed to save:", error);
-      } finally {
-        setIsSaving(false);
+      } else {
+        // CREATE: First time, use POST to create - only send basic info, no empty fields
+        console.log("✨ Creating new campaign (first time)");
+        const createPayload: any = {
+          name: data.name,
+          channelCode: data.channelCode,
+          apiProvider: data.apiProvider,
+          subject: data.subject,
+          status: "DRAFT", // Always set status to DRAFT for new campaigns
+        };
+        // Only include email content if it exists
+        if (wizardData.emailContent.htmlBody && wizardData.emailContent.htmlBody.trim() !== "") {
+          createPayload.htmlBody = wizardData.emailContent.htmlBody;
+        }
+        if (wizardData.emailContent.textBody && wizardData.emailContent.textBody.trim() !== "") {
+          createPayload.textBody = wizardData.emailContent.textBody;
+        }
+        // Do NOT send contacts in Basic Info step - contacts will be added in Step 3
+        
+        const newCampaign = await createCampaign.mutateAsync(createPayload);
+        // Store the campaign ID for subsequent steps - now all future saves will be UPDATE
+        if (newCampaign?.id) {
+          setCampaignId(newCampaign.id);
+          console.log("✅ Campaign created with ID:", newCampaign.id);
+        }
       }
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+    } finally {
+      setIsSaving(false);
     }
     
     onNext();

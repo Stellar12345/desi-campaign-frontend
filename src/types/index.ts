@@ -105,6 +105,7 @@ export interface CreateCampaignPayload {
   textBody?: string;
   htmlBody?: string;
   contacts?: string[]; // Contact IDs
+  status?: "DRAFT" | "PUBLISHED" | "SENT" | "FAILED"; // Status, defaults to DRAFT
 }
 
 export interface UpdateCampaignPayload {
@@ -115,6 +116,7 @@ export interface UpdateCampaignPayload {
   textBody?: string;
   htmlBody?: string;
   contacts?: string[];
+  status?: "DRAFT" | "PUBLISHED" | "SENT" | "FAILED";
 }
 
 export interface PublishCampaignPayload {

@@ -1,27 +1,31 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Edit, Send } from "lucide-react";
-import { useCampaigns, usePublishCampaign } from "@/hooks/useCampaigns";
+import { Plus, Edit, Send, Trash2 } from "lucide-react";
+import { useCampaigns, useDeleteCampaign } from "@/hooks/useCampaigns";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import Skeleton from "@/components/ui/Skeleton";
 import { formatDateString } from "@/utils/format";
 import { useState } from "react";
 import ConfirmModal from "@/components/users/ConfirmModal";
+import type { Campaign } from "@/types";
 
 export default function CampaignsPage() {
   const navigate = useNavigate();
   const { data: campaignsData, isLoading } = useCampaigns();
-  const publishCampaign = usePublishCampaign();
-  const [publishModal, setPublishModal] = useState<{ isOpen: boolean; campaignId?: string }>({
+  const deleteCampaign = useDeleteCampaign();
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; campaignId?: string; campaignName?: string }>({
     isOpen: false,
   });
 
   // Ensure campaigns is always an array
   const campaigns = Array.isArray(campaignsData) ? campaignsData : [];
 
+  // Filter to only show DRAFT campaigns
+  const draftCampaigns = campaigns.filter((c) => c.status === "DRAFT");
+
   // Local filter for campaign channel (EMAIL vs WHATSAPP)
   const [channelFilter, setChannelFilter] = useState<"EMAIL" | "WHATSAPP">("EMAIL");
-  const filteredCampaigns = campaigns.filter((c) => c.channelCode === channelFilter);
+  const filteredCampaigns = draftCampaigns.filter((c) => c.channelCode === channelFilter);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -36,10 +40,44 @@ export default function CampaignsPage() {
     }
   };
 
-  const handlePublish = async () => {
-    if (publishModal.campaignId) {
-      await publishCampaign.mutateAsync({ campaignId: publishModal.campaignId });
-      setPublishModal({ isOpen: false });
+  // Helper function to check which step is pending
+  const getPendingStep = (campaign: Campaign): number | null => {
+    // Step 1: Basic Info - check if name, channelCode, apiProvider, subject are filled
+    if (!campaign.name || !campaign.channelCode || !campaign.apiProvider || !campaign.subject) {
+      return 1;
+    }
+    
+    // Step 2: Email Content - check if htmlBody is filled
+    if (!campaign.htmlBody || campaign.htmlBody.trim() === "") {
+      return 2;
+    }
+    
+    // Step 3: Contacts - check if contacts exist and have at least one
+    if (!campaign.contacts || campaign.contacts.length === 0) {
+      return 3;
+    }
+    
+    // All steps are complete, can go to publish (step 5)
+    return null;
+  };
+
+  // Handler for publish button click - checks pending steps and navigates accordingly
+  const handlePublishClick = (campaign: Campaign) => {
+    const pendingStep = getPendingStep(campaign);
+    
+    if (pendingStep) {
+      // Navigate to the pending step
+      navigate(`/campaigns/${campaign.id}/edit?step=${pendingStep}`);
+    } else {
+      // All steps complete, navigate to publish step (step 5)
+      navigate(`/campaigns/${campaign.id}/edit?step=5`);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (deleteModal.campaignId) {
+      await deleteCampaign.mutateAsync(deleteModal.campaignId);
+      setDeleteModal({ isOpen: false });
     }
   };
 
@@ -151,10 +189,17 @@ export default function CampaignsPage() {
                     <Button
                       variant="primary"
                       size="sm"
-                      onClick={() => setPublishModal({ isOpen: true, campaignId: campaign.id })}
+                      onClick={() => handlePublishClick(campaign)}
                     >
                       <Send className="w-4 h-4 mr-1" />
                       Publish
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteModal({ isOpen: true, campaignId: campaign.id, campaignName: campaign.name })}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-600" />
                     </Button>
                   </div>
                 )}
@@ -164,16 +209,16 @@ export default function CampaignsPage() {
         </div>
       )}
 
-      {/* Publish Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
-        isOpen={publishModal.isOpen}
-        onClose={() => setPublishModal({ isOpen: false })}
-        onConfirm={handlePublish}
-        title="Publish Campaign"
-        message="Are you sure you want to publish this campaign? It will be sent to all selected recipients."
-        confirmText="Publish"
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false })}
+        onConfirm={handleDelete}
+        title="Delete Campaign"
+        message={`Are you sure you want to delete "${deleteModal.campaignName}"? This action cannot be undone.`}
+        confirmText="Delete"
         variant="danger"
-        isLoading={publishCampaign.isPending}
+        isLoading={deleteCampaign.isPending}
       />
     </div>
   );

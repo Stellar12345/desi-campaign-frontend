@@ -1,9 +1,10 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { createContext, useContext, useState, ReactNode, useEffect, useRef } from "react";
 import type { CampaignWizardData, Campaign } from "@/types";
 
 interface CampaignWizardContextType {
   wizardData: CampaignWizardData;
   campaignId?: string;
+  setCampaignId: (id: string) => void;
   updateBasicInfo: (data: CampaignWizardData["basicInfo"]) => void;
   updateEmailContent: (data: CampaignWizardData["emailContent"]) => void;
   updateContacts: (contacts: string[]) => void;
@@ -34,7 +35,7 @@ const CampaignWizardContext = createContext<CampaignWizardContextType | undefine
 
 export function CampaignWizardProvider({
   children,
-  campaignId,
+  campaignId: initialCampaignId,
   initialCampaign,
 }: {
   children: ReactNode;
@@ -42,6 +43,12 @@ export function CampaignWizardProvider({
   initialCampaign?: Campaign;
 }) {
   const [wizardData, setWizardData] = useState<CampaignWizardData>(initialWizardData);
+  const [campaignId, setCampaignIdState] = useState<string | undefined>(initialCampaignId);
+  const loadedCampaignIdRef = useRef<string | undefined>(undefined);
+  
+  const setCampaignId = (id: string) => {
+    setCampaignIdState(id);
+  };
 
   const loadCampaign = (campaign: Campaign) => {
     setWizardData({
@@ -63,11 +70,12 @@ export function CampaignWizardProvider({
 
   // Load campaign data if provided
   useEffect(() => {
-    if (initialCampaign) {
+    if (initialCampaign && initialCampaign.id !== loadedCampaignIdRef.current) {
       loadCampaign(initialCampaign);
+      loadedCampaignIdRef.current = initialCampaign.id;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialCampaign]);
+  }, [initialCampaign?.id]); // Only depend on campaign ID to avoid infinite loops
 
   const updateBasicInfo = (data: CampaignWizardData["basicInfo"]) => {
     setWizardData((prev) => ({
@@ -120,6 +128,7 @@ export function CampaignWizardProvider({
       value={{
         wizardData,
         campaignId,
+        setCampaignId,
         updateBasicInfo,
         updateEmailContent,
         updateContacts,

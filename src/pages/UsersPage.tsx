@@ -46,20 +46,34 @@ export default function UsersPage() {
   };
 
   const handleSubmit = (data: CreateUserPayload | UpdateUserPayload) => {
+    console.log("✅ handleSubmit called in UsersPage");
+    console.log("✅ Editing user:", editingUser?.id);
+    console.log("✅ Payload:", data);
+    
     if (editingUser) {
+      console.log("✅ Calling updateUser.mutate with:", { id: editingUser.id, payload: data });
       updateUser.mutate(
         { id: editingUser.id, payload: data as UpdateUserPayload },
         {
           onSuccess: () => {
+            console.log("✅ Update successful!");
             setIsDrawerOpen(false);
             setEditingUser(null);
+          },
+          onError: (error) => {
+            console.error("❌ Update failed:", error);
           },
         }
       );
     } else {
+      console.log("✅ Calling createUser.mutate");
       createUser.mutate(data as CreateUserPayload, {
         onSuccess: () => {
+          console.log("✅ Create successful!");
           setIsDrawerOpen(false);
+        },
+        onError: (error) => {
+          console.error("❌ Create failed:", error);
         },
       });
     }

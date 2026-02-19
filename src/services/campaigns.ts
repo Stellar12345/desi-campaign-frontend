@@ -52,12 +52,12 @@ export const campaignsApi = {
   },
 
   // Publish campaign
-  publish: async (payload: PublishCampaignPayload): Promise<Campaign> => {
-    const response = await apiClient.post<ApiResponse<Campaign>>(
+  publish: async (payload: PublishCampaignPayload): Promise<ApiResponse<any>> => {
+    const response = await apiClient.post<ApiResponse<any>>(
       "/private/campaigns/publish",
       payload
     );
-    return response.data.data;
+    return response.data; // Return full response including data, message, etc.
   },
 
   // Get contacts for campaign, filtered by channel (EMAIL, WHATSAPP, etc.)

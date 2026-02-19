@@ -5,6 +5,7 @@ import {
   useCampaignContacts,
   useCreateCampaign,
   useUpdateCampaignContacts,
+  useUpdateCampaign,
 } from "@/hooks/useCampaigns";
 import Button from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
@@ -23,11 +24,12 @@ interface ContactOption {
 }
 
 export default function StepContacts({ onNext, onPrevious }: StepContactsProps) {
-  const { wizardData, updateContacts, campaignId } = useCampaignWizard();
+  const { wizardData, updateContacts, campaignId, setCampaignId } = useCampaignWizard();
   // Use the selected channel from step 1 to fetch matching contacts (EMAIL, WHATSAPP, etc.)
   const channelCode = wizardData.basicInfo.channelCode || "EMAIL";
   const { data: contactsData = [], isLoading } = useCampaignContacts(channelCode);
   const createCampaign = useCreateCampaign();
+  const updateCampaign = useUpdateCampaign();
   const updateCampaignContacts = useUpdateCampaignContacts();
   const [searchTerm, setSearchTerm] = useState("");
   const [isSavingDraft, setIsSavingDraft] = useState(false);
@@ -78,22 +80,50 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
   const handleNext = async () => {
     updateContacts(selectedContacts);
     
-    // Auto-save when editing existing campaign
-    if (campaignId) {
-      setIsSavingDraft(true);
-      try {
+    // Auto-save draft when moving to next step
+    setIsSavingDraft(true);
+    try {
+      if (campaignId) {
+        // UPDATE: Campaign exists, use PUT to update contacts
+        console.log("🔄 Updating existing campaign contacts:", campaignId);
         await updateCampaignContacts.mutateAsync({
           campaignId,
           contacts: selectedContacts,
         });
-      } catch (error) {
-        console.error("Failed to save:", error);
-      } finally {
-        setIsSavingDraft(false);
+      } else {
+        // CREATE: First time only, use POST to create (if basic info exists)
+        if (wizardData.basicInfo.name && wizardData.basicInfo.subject) {
+          console.log("✨ Creating new campaign (first time)");
+          const createPayload: any = {
+            ...wizardData.basicInfo,
+            contacts: selectedContacts,
+            status: "DRAFT", // Always set status to DRAFT for new campaigns
+          };
+          // Only include htmlBody if it exists
+          if (wizardData.emailContent.htmlBody && wizardData.emailContent.htmlBody.trim() !== "") {
+            createPayload.htmlBody = wizardData.emailContent.htmlBody;
+          }
+          // Only include textBody if it exists
+          if (wizardData.emailContent.textBody && wizardData.emailContent.textBody.trim() !== "") {
+            createPayload.textBody = wizardData.emailContent.textBody;
+          }
+          
+          const newCampaign = await createCampaign.mutateAsync(createPayload);
+          // Store the campaign ID for subsequent steps - now all future saves will be UPDATE
+          if (newCampaign?.id) {
+            setCampaignId(newCampaign.id);
+            console.log("✅ Campaign created with ID:", newCampaign.id);
+          }
+        }
       }
+      // Only move to next step if save was successful
+      onNext();
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+      // Don't navigate on error - let user retry
+    } finally {
+      setIsSavingDraft(false);
     }
-    
-    onNext();
   };
 
   const handleSaveDraft = async () => {
@@ -102,17 +132,53 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
 
     try {
       if (campaignId) {
-        await updateCampaignContacts.mutateAsync({
-          campaignId,
+        // UPDATE: Campaign exists, use PUT to update - send ALL current wizard data
+        console.log("🔄 Updating existing campaign:", campaignId);
+        const updatePayload: any = {
+          // Basic info from previous steps
+          name: wizardData.basicInfo.name,
+          channelCode: wizardData.basicInfo.channelCode,
+          apiProvider: wizardData.basicInfo.apiProvider,
+          subject: wizardData.basicInfo.subject,
+          // Current step data
           contacts: selectedContacts,
+          status: "DRAFT", // Always keep status as DRAFT when updating
+        };
+        // Include email content from previous steps
+        if (wizardData.emailContent.htmlBody && wizardData.emailContent.htmlBody.trim() !== "") {
+          updatePayload.htmlBody = wizardData.emailContent.htmlBody;
+        }
+        if (wizardData.emailContent.textBody && wizardData.emailContent.textBody.trim() !== "") {
+          updatePayload.textBody = wizardData.emailContent.textBody;
+        }
+        
+        await updateCampaign.mutateAsync({
+          id: campaignId,
+          payload: updatePayload,
         });
       } else {
-        await createCampaign.mutateAsync({
+        // CREATE: First time only, use POST to create
+        console.log("✨ Creating new campaign (first time)");
+        const createPayload: any = {
           ...wizardData.basicInfo,
-          htmlBody: wizardData.emailContent.htmlBody,
-          textBody: wizardData.emailContent.textBody,
           contacts: selectedContacts,
-        });
+          status: "DRAFT", // Always set status to DRAFT for new campaigns
+        };
+        // Only include htmlBody if it exists
+        if (wizardData.emailContent.htmlBody && wizardData.emailContent.htmlBody.trim() !== "") {
+          createPayload.htmlBody = wizardData.emailContent.htmlBody;
+        }
+        // Only include textBody if it exists
+        if (wizardData.emailContent.textBody && wizardData.emailContent.textBody.trim() !== "") {
+          createPayload.textBody = wizardData.emailContent.textBody;
+        }
+        
+        const newCampaign = await createCampaign.mutateAsync(createPayload);
+        // Store the campaign ID for subsequent steps - now all future saves will be UPDATE
+        if (newCampaign?.id) {
+          setCampaignId(newCampaign.id);
+          console.log("✅ Campaign created with ID:", newCampaign.id);
+        }
       }
     } catch (error) {
       console.error("Failed to save draft:", error);
@@ -224,7 +290,11 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
           >
             Save Draft
           </Button>
-          <Button onClick={handleNext} disabled={selectedContacts.length === 0}>
+          <Button 
+            onClick={handleNext} 
+            disabled={selectedContacts.length === 0 || isSavingDraft}
+            isLoading={isSavingDraft}
+          >
             Next
           </Button>
         </div>

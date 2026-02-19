@@ -1,4 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
+import { useEffect } from "react";
 import { useCampaignWizard } from "@/contexts/CampaignWizardContext";
 import Stepper from "./Stepper";
 import StepBasicInfo from "./StepBasicInfo";
@@ -22,6 +24,19 @@ interface CampaignWizardProps {
 
 export default function CampaignWizard({ campaignId }: CampaignWizardProps) {
   const { wizardData, nextStep, prevStep, setStep } = useCampaignWizard();
+  const [searchParams] = useSearchParams();
+  
+  // Handle step query parameter from URL
+  useEffect(() => {
+    const stepParam = searchParams.get("step");
+    if (stepParam) {
+      const stepNumber = parseInt(stepParam, 10);
+      if (stepNumber >= 1 && stepNumber <= 5 && stepNumber !== wizardData.step) {
+        setStep(stepNumber);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const stepVariants = {
     initial: { opacity: 0, x: 20 },
