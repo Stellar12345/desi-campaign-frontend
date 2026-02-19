@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { User, LogOut, ChevronDown } from "lucide-react";
-import { cn } from "@/utils/cn";
-
 export default function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);

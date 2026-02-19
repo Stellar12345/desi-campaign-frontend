@@ -405,7 +405,6 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
         {fields.map((field, index) => {
           const contactChannelCode = watch(`contacts.${index}.channelCode`);
           const useSameAddress = watch(`contacts.${index}.useSameAddress`);
-          const firstContact = fields[0];
 
           return (
             <div
@@ -597,16 +596,7 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
           Cancel
         </Button>
         {/* Use type="submit" to properly trigger form validation */}
-        <Button
-          type="submit"
-          isLoading={isLoading}
-          onClick={(e) => {
-            console.log("🔵 Update User button clicked!");
-            console.log("🔵 Form errors:", errors);
-            console.log("🔵 Form values:", getValues());
-            // Let the form handle submission naturally
-          }}
-        >
+        <Button type="submit" isLoading={isLoading}>
           {user ? "Update User" : "Create User"}
         </Button>
       </div>

@@ -91,7 +91,7 @@ export function useUpdateCampaign() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateCampaignPayload }) =>
       campaignsApi.update(id, payload),
-    onSuccess: (data: Campaign, variables: { id: string; payload: UpdateCampaignPayload }) => {
+    onSuccess: (_data: Campaign, variables: { id: string; payload: UpdateCampaignPayload }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.campaigns });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.campaign(variables.id) });
     },

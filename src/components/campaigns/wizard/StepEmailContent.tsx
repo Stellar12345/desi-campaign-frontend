@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useCampaignWizard } from "@/contexts/CampaignWizardContext";
 import { useCreateCampaign, useUpdateCampaign } from "@/hooks/useCampaigns";
 import Button from "@/components/ui/Button";
@@ -44,7 +44,11 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
   const htmlBody = watch("htmlBody");
 
   const onSubmit = async (data: EmailContentFormData) => {
-    updateEmailContent(data);
+    // Ensure we always store both fields, falling back to empty string for textBody
+    updateEmailContent({
+      htmlBody: data.htmlBody,
+      textBody: data.textBody ?? "",
+    });
     
     // Auto-save draft when moving to next step
     setIsSavingDraft(true);
@@ -115,7 +119,10 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
   const handleSaveDraft = async () => {
     setIsSavingDraft(true);
     const formData = watch();
-    updateEmailContent(formData);
+    updateEmailContent({
+      htmlBody: formData.htmlBody,
+      textBody: formData.textBody ?? "",
+    });
 
     try {
       if (campaignId) {
