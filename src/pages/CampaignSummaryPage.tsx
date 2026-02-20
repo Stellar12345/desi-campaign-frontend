@@ -1,11 +1,25 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { useCampaignSummaryById } from "@/hooks/useCampaigns";
 import Skeleton from "@/components/ui/Skeleton";
 import Badge from "@/components/ui/Badge";
 
 export default function CampaignSummaryPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnPage = searchParams.get("returnPage");
   const { data, isLoading } = useCampaignSummaryById(id || "");
+
+  const handleBack = () => {
+    if (returnPage) {
+      // Navigate back to Published Campaigns with the same page number
+      navigate(`/campaigns/published?page=${returnPage}`);
+    } else {
+      // Fallback to browser back if no returnPage param
+      navigate(-1);
+    }
+  };
 
   if (!id) {
     return null;
@@ -39,9 +53,14 @@ export default function CampaignSummaryPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {campaignSummary.campaignName}
-          </h1>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="flex items-center gap-3 text-3xl font-bold text-gray-900 mb-2 hover:text-gray-700 transition-colors group"
+          >
+            <ArrowLeft className="w-8 h-8 group-hover:-translate-x-1 transition-transform" />
+            <span>{campaignSummary.campaignName}</span>
+          </button>
           <p className="mt-2 text-gray-600">
             {new Date(campaignSummary.date).toLocaleDateString()}
           </p>

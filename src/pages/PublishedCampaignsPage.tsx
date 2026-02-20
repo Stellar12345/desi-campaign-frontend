@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Eye, BarChart3 } from "lucide-react";
 import { usePublishedCampaignsPaginated, useCampaign } from "@/hooks/useCampaigns";
 import type { Campaign, PaginatedCampaignsResponse } from "@/types";
@@ -8,14 +8,37 @@ import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { formatDateString } from "@/utils/format";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 const RESULTS_PER_PAGE = 10;
 
 export default function PublishedCampaignsPage() {
-  const [page, setPage] = useState(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageParam = searchParams.get("page");
+  const initialPage = pageParam ? parseInt(pageParam, 10) : 1;
+  const [page, setPage] = useState(initialPage);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Sync page state with URL param when it changes externally (e.g., coming back from metrics)
+  useEffect(() => {
+    const urlPage = pageParam ? parseInt(pageParam, 10) : 1;
+    if (urlPage !== page && urlPage >= 1) {
+      setPage(urlPage);
+    }
+  }, [pageParam]); // Only depend on pageParam
+
+  // Update URL when page changes internally (user clicks prev/next)
+  const updatePage = (newPage: number) => {
+    setPage(newPage);
+    const params = new URLSearchParams(searchParams);
+    if (newPage > 1) {
+      params.set("page", newPage.toString());
+    } else {
+      params.delete("page");
+    }
+    setSearchParams(params, { replace: true });
+  };
   
   // Fetch full campaign details when a campaign is selected
   const { data: selectedCampaign, isLoading: isLoadingCampaign } = useCampaign(selectedCampaignId || "");
@@ -28,13 +51,13 @@ export default function PublishedCampaignsPage() {
 
   const handlePrev = () => {
     if (pageInfo?.hasPrevPage && pageInfo.prevPage) {
-      setPage(pageInfo.prevPage);
+      updatePage(pageInfo.prevPage);
     }
   };
 
   const handleNext = () => {
     if (pageInfo?.hasNextPage && pageInfo.nextPage) {
-      setPage(pageInfo.nextPage);
+      updatePage(pageInfo.nextPage);
     }
   };
 
@@ -112,7 +135,7 @@ export default function PublishedCampaignsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/campaigns/${campaign.id}/summary`)}
+                          onClick={() => navigate(`/campaigns/${campaign.id}/summary?returnPage=${page}`)}
                         >
                           <BarChart3 className="w-4 h-4 mr-1" />
                           Metrics

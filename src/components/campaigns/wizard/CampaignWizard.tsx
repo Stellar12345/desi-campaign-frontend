@@ -8,7 +8,7 @@ import StepEmailContent from "./StepEmailContent";
 import StepContacts from "./StepContacts";
 import StepReview from "./StepReview";
 import StepPublish from "./StepPublish";
-import { FileText, Mail, Users, Eye, Send } from "lucide-react";
+import { FileText, Mail, Users, Eye, Send, ArrowLeft } from "lucide-react";
 
 const steps = [
   { number: 1, label: "Basic Info", icon: <FileText className="w-6 h-6" /> },
@@ -66,27 +66,20 @@ export default function CampaignWizard({ campaignId }: CampaignWizardProps) {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {campaignId ? "Edit Campaign" : "Create Campaign"}
-            </h1>
-            <p className="text-gray-600">
-              {campaignId
-                ? "Edit your campaign and publish when ready"
-                : "Follow the steps to create and publish your campaign"}
-            </p>
-          </div>
+        <div className="mb-8">
           <button
             type="button"
             onClick={() => navigate("/campaigns")}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+            className="flex items-center gap-3 text-3xl font-bold text-gray-900 mb-2 hover:text-gray-700 transition-colors group"
           >
-            <span className="inline-block rounded-full border border-gray-300 px-2 py-1 text-xs font-medium mr-1">
-              ←
-            </span>
-            Back to Campaigns
+            <ArrowLeft className="w-8 h-8 group-hover:-translate-x-1 transition-transform" />
+            <span>{campaignId ? "Edit Campaign" : "Create Campaign"}</span>
           </button>
+          <p className="text-gray-600">
+            {campaignId
+              ? "Edit your campaign and publish when ready"
+              : "Follow the steps to create and publish your campaign"}
+          </p>
         </div>
 
         {/* Stepper */}
