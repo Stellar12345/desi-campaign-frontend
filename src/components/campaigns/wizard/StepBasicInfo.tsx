@@ -2,9 +2,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useCampaignWizard } from "@/contexts/CampaignWizardContext";
 import { useCreateCampaign, useUpdateCampaign } from "@/hooks/useCampaigns";
+import { useToastContext } from "@/contexts/ToastContext";
+import { getErrorMessage } from "@/utils/format";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
@@ -23,12 +25,16 @@ interface StepBasicInfoProps {
 }
 
 export default function StepBasicInfo({ onNext }: StepBasicInfoProps) {
-  const { wizardData, updateBasicInfo, campaignId, setCampaignId } = useCampaignWizard();
+  const { wizardData, updateBasicInfo, campaignId, setCampaignId, setStep } = useCampaignWizard();
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign();
+  const { showError } = useToastContext();
   const [isSaving, setIsSaving] = useState(false);
-
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  
+  // Check if we should return to Review after saving
+  const returnToStep = searchParams.get("returnTo");
   const initialChannelFromUrl = (searchParams.get("channel") || "").toUpperCase();
   const initialChannelCode =
     (initialChannelFromUrl === "EMAIL" || initialChannelFromUrl === "WHATSAPP"
@@ -115,11 +121,29 @@ export default function StepBasicInfo({ onNext }: StepBasicInfoProps) {
       }
     } catch (error) {
       console.error("Failed to save draft:", error);
-    } finally {
+      const errorMessage = getErrorMessage(error);
+      showError(
+        campaignId ? "Update Failed" : "Creation Failed",
+        errorMessage,
+        6000
+      );
       setIsSaving(false);
+      return; // Don't navigate on error
     }
     
-    onNext();
+    setIsSaving(false);
+    
+    // If editing from Review, return to Review step instead of next
+    if (returnToStep) {
+      const returnStep = parseInt(returnToStep, 10);
+      const currentParams = new URLSearchParams(searchParams);
+      currentParams.set("step", returnStep.toString());
+      currentParams.delete("returnTo"); // Remove returnTo param
+      navigate(`?${currentParams.toString()}`, { replace: true });
+      setStep(returnStep);
+    } else {
+      onNext();
+    }
   };
 
   const channelCodeOptions = [

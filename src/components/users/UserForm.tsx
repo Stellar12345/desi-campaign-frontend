@@ -8,6 +8,7 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import type { User, CreateUserPayload, UpdateUserPayload } from "@/types";
 import { useDeleteContact } from "@/hooks/useUsers";
+import { parsePhoneNumber } from "@/utils/format";
 
 // Dynamic validation based on channel code
 const contactSchema = z
@@ -112,20 +113,27 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
       phone: user?.phoneNo || "",
       contacts: user
         ? // When editing: map existing contacts
-          user.contacts?.map((c) => ({
-            id: c.id,
-            userId: c.userId,
-            name: c.name,
-            channelCode: c.channelCode,
-            email: c.email,
-            phone: c.phone,
-            street: c.street || "",
-            city: c.city || "",
-            state: c.state || "",
-            country: c.country || "",
-            postalCode: c.postalCode || "",
-            useSameAddress: false,
-          })) || []
+          user.contacts?.map((c) => {
+            // For WhatsApp contacts, reconstruct full phone from countryCode + phone if available
+            let displayPhone = c.phone || "";
+            if ((c.channelCode === "WHATSAPP" || c.channelCode === "EMAIL_AND_WHATSAPP") && (c as any).countryCode) {
+              displayPhone = `${(c as any).countryCode}${c.phone}`;
+            }
+            return {
+              id: c.id,
+              userId: c.userId,
+              name: c.name,
+              channelCode: c.channelCode,
+              email: c.email,
+              phone: displayPhone,
+              street: c.street || "",
+              city: c.city || "",
+              state: c.state || "",
+              country: c.country || "",
+              postalCode: c.postalCode || "",
+              useSameAddress: false,
+            };
+          }) || []
         : // When creating: add default contact
           [
             {
@@ -275,13 +283,35 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
       // Always include phone if it exists in the contact data (even if channel doesn't require it)
       // This preserves existing phone data when channel code changes
       if (contact.phone !== undefined && contact.phone !== null && contact.phone !== "") {
-        contactData.phone = contact.phone;
+        // For WhatsApp contacts, parse phone number into countryCode and phone
+        if (contact.channelCode === "WHATSAPP" || contact.channelCode === "EMAIL_AND_WHATSAPP") {
+          const parsed = parsePhoneNumber(contact.phone);
+          if (parsed) {
+            contactData.countryCode = parsed.countryCode;
+            contactData.phone = parsed.phone;
+          } else {
+            contactData.phone = contact.phone;
+          }
+        } else {
+          contactData.phone = contact.phone;
+        }
       } else if (
         contact.channelCode === "WHATSAPP" ||
         contact.channelCode === "EMAIL_AND_WHATSAPP"
       ) {
         // Only set phone if channel requires it and no existing phone
-        contactData.phone = idx === 0 && primaryPhone ? primaryPhone : "";
+        const phoneToUse = idx === 0 && primaryPhone ? primaryPhone : "";
+        if (phoneToUse) {
+          const parsed = parsePhoneNumber(phoneToUse);
+          if (parsed) {
+            contactData.countryCode = parsed.countryCode;
+            contactData.phone = parsed.phone;
+          } else {
+            contactData.phone = phoneToUse;
+          }
+        } else {
+          contactData.phone = "";
+        }
       }
 
       // Handle address - if useSameAddress, copy from first contact

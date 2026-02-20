@@ -24,6 +24,12 @@ export const usersApi = {
   // Create user
   create: async (payload: CreateUserPayload): Promise<User> => {
     const response = await apiClient.post<ApiResponse<User>>("/private/users", payload);
+    // Check if response has error status
+    if (response.data.status === "ERROR") {
+      const error = new Error(response.data.message || "Failed to create user");
+      (error as any).response = { data: response.data };
+      throw error;
+    }
     return response.data.data;
   },
 
@@ -31,6 +37,12 @@ export const usersApi = {
   update: async (id: string, payload: UpdateUserPayload): Promise<User> => {
     // Use private users endpoint to update existing user
     const response = await apiClient.put<ApiResponse<User>>(`/private/users/${id}`, payload);
+    // Check if response has error status
+    if (response.data.status === "ERROR") {
+      const error = new Error(response.data.message || "Failed to update user");
+      (error as any).response = { data: response.data };
+      throw error;
+    }
     return response.data.data;
   },
 
@@ -42,6 +54,12 @@ export const usersApi = {
   // Restore user
   restore: async (id: string): Promise<User> => {
     const response = await apiClient.patch<ApiResponse<User>>(`/public/users/restore/${id}`);
+    // Check if response has error status
+    if (response.data.status === "ERROR") {
+      const error = new Error(response.data.message || "Failed to restore user");
+      (error as any).response = { data: response.data };
+      throw error;
+    }
     return response.data.data;
   },
 

@@ -12,11 +12,12 @@ import type {
 } from "@/types";
 
 export const campaignsApi = {
-  // Get all campaigns
-  getAll: async (): Promise<Campaign[]> => {
-    const response = await apiClient.get<ApiResponse<Campaign[] | { items: Campaign[] }>>(
-      "/private/campaigns"
-    );
+  // Get all campaigns (optionally filtered by status)
+  getAll: async (status?: "DRAFT" | "PUBLISHED" | "SENT" | "FAILED"): Promise<Campaign[]> => {
+    const url = status 
+      ? `/private/campaigns?status=${status}`
+      : "/private/campaigns";
+    const response = await apiClient.get<ApiResponse<Campaign[] | { items: Campaign[] }>>(url);
     // Handle different response structures
     const data = response.data.data;
     if (Array.isArray(data)) {
@@ -32,7 +33,7 @@ export const campaignsApi = {
   // Get published campaigns with pagination
   getPublishedPaginated: async (
     page: number,
-    resultsPerPage: number
+    _resultsPerPage: number
   ): Promise<PaginatedCampaignsResponse> => {
     const response = await apiClient.get<ApiResponse<PaginatedCampaignsResponse>>(
       `/private/campaigns?status=PUBLISHED&page=${page}`
@@ -49,12 +50,24 @@ export const campaignsApi = {
   // Create campaign
   create: async (payload: CreateCampaignPayload): Promise<Campaign> => {
     const response = await apiClient.post<ApiResponse<Campaign>>("/private/campaigns", payload);
+    // Check if response has error status
+    if (response.data.status === "ERROR") {
+      const error = new Error(response.data.message || "Failed to create campaign");
+      (error as any).response = { data: response.data };
+      throw error;
+    }
     return response.data.data;
   },
 
   // Update campaign
   update: async (id: string, payload: UpdateCampaignPayload): Promise<Campaign> => {
     const response = await apiClient.put<ApiResponse<Campaign>>(`/private/campaigns/${id}`, payload);
+    // Check if response has error status
+    if (response.data.status === "ERROR") {
+      const error = new Error(response.data.message || "Failed to update campaign");
+      (error as any).response = { data: response.data };
+      throw error;
+    }
     return response.data.data;
   },
 
@@ -69,6 +82,12 @@ export const campaignsApi = {
       "/private/campaigns/publish",
       payload
     );
+    // Check if response has error status
+    if (response.data.status === "ERROR") {
+      const error = new Error(response.data.message || "Failed to publish campaign");
+      (error as any).response = { data: response.data };
+      throw error;
+    }
     return response.data; // Return full response including data, message, etc.
   },
 

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Search, Check } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useCampaignWizard } from "@/contexts/CampaignWizardContext";
 import {
   useCampaignContacts,
@@ -7,6 +8,8 @@ import {
   useUpdateCampaignContacts,
   useUpdateCampaign,
 } from "@/hooks/useCampaigns";
+import { useToastContext } from "@/contexts/ToastContext";
+import { getErrorMessage } from "@/utils/format";
 import Button from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import { cn } from "@/utils/cn";
@@ -24,16 +27,22 @@ interface ContactOption {
 }
 
 export default function StepContacts({ onNext, onPrevious }: StepContactsProps) {
-  const { wizardData, updateContacts, campaignId, setCampaignId } = useCampaignWizard();
+  const { wizardData, updateContacts, campaignId, setCampaignId, setStep } = useCampaignWizard();
   // Use the selected channel from step 1 to fetch matching contacts (EMAIL, WHATSAPP, etc.)
   const channelCode = wizardData.basicInfo.channelCode || "EMAIL";
   const { data: contactsData = [], isLoading } = useCampaignContacts(channelCode);
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign();
   const updateCampaignContacts = useUpdateCampaignContacts();
+  const { showError } = useToastContext();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState("");
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>(wizardData.contacts);
+  
+  // Check if we should return to Review after saving
+  const returnToStep = searchParams.get("returnTo");
 
   // Flatten contacts from users if needed
   const contacts: ContactOption[] = Array.isArray(contactsData)
@@ -116,14 +125,31 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
           }
         }
       }
-      // Only move to next step if save was successful
-      onNext();
+      // If editing from Review, return to Review step instead of next
+      if (returnToStep) {
+        const returnStep = parseInt(returnToStep, 10);
+        const currentParams = new URLSearchParams(searchParams);
+        currentParams.set("step", returnStep.toString());
+        currentParams.delete("returnTo"); // Remove returnTo param
+        navigate(`?${currentParams.toString()}`, { replace: true });
+        setStep(returnStep);
+      } else {
+        // Only move to next step if save was successful
+        onNext();
+      }
     } catch (error) {
       console.error("Failed to save draft:", error);
-      // Don't navigate on error - let user retry
-    } finally {
+      const errorMessage = getErrorMessage(error);
+      showError(
+        campaignId ? "Update Failed" : "Creation Failed",
+        errorMessage,
+        6000
+      );
       setIsSavingDraft(false);
+      return; // Don't navigate on error - let user retry
     }
+    
+    setIsSavingDraft(false);
   };
 
   const handleSaveDraft = async () => {
@@ -182,8 +208,26 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
       }
     } catch (error) {
       console.error("Failed to save draft:", error);
-    } finally {
+      const errorMessage = getErrorMessage(error);
+      showError(
+        campaignId ? "Update Failed" : "Creation Failed",
+        errorMessage,
+        6000
+      );
       setIsSavingDraft(false);
+      return; // Don't navigate on error
+    }
+    
+    setIsSavingDraft(false);
+    
+    // If editing from Review, return to Review step after saving
+    if (returnToStep) {
+      const returnStep = parseInt(returnToStep, 10);
+      const currentParams = new URLSearchParams(searchParams);
+      currentParams.set("step", returnStep.toString());
+      currentParams.delete("returnTo"); // Remove returnTo param
+      navigate(`?${currentParams.toString()}`, { replace: true });
+      setStep(returnStep);
     }
   };
 

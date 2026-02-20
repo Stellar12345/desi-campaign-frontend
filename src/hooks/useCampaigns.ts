@@ -17,11 +17,11 @@ const QUERY_KEYS = {
     ["campaigns", "summary", startDate, toDate] as const,
 };
 
-// Get all campaigns
-export function useCampaigns() {
+// Get all campaigns (optionally filtered by status)
+export function useCampaigns(status?: "DRAFT" | "PUBLISHED" | "SENT" | "FAILED") {
   return useQuery({
-    queryKey: QUERY_KEYS.campaigns,
-    queryFn: campaignsApi.getAll,
+    queryKey: status ? [...QUERY_KEYS.campaigns, status] : QUERY_KEYS.campaigns,
+    queryFn: () => campaignsApi.getAll(status),
   });
 }
 
@@ -29,11 +29,7 @@ export function useCampaigns() {
 export function usePublishedCampaigns() {
   return useQuery<Campaign[]>({
     queryKey: QUERY_KEYS.publishedCampaigns,
-    queryFn: async () => {
-      // Reuse getAll with status filter
-      const response = await campaignsApi.getAll();
-      return response.filter((c) => c.status === "PUBLISHED");
-    },
+    queryFn: () => campaignsApi.getAll("PUBLISHED"),
   });
 }
 
@@ -42,7 +38,7 @@ export function usePublishedCampaignsPaginated(page: number, resultsPerPage: num
   return useQuery({
     queryKey: ["campaigns", "published", page, resultsPerPage] as const,
     queryFn: () => campaignsApi.getPublishedPaginated(page, resultsPerPage),
-    keepPreviousData: true,
+    placeholderData: (previousData) => previousData,
   });
 }
 

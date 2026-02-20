@@ -2,8 +2,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useCampaignWizard } from "@/contexts/CampaignWizardContext";
 import { useCreateCampaign, useUpdateCampaign } from "@/hooks/useCampaigns";
+import { useToastContext } from "@/contexts/ToastContext";
+import { getErrorMessage } from "@/utils/format";
 import Button from "@/components/ui/Button";
 import { CampaignEmailEditor } from "@/components/campaigns/CampaignEmailEditor";
 
@@ -20,13 +23,18 @@ interface StepEmailContentProps {
 }
 
 export default function StepEmailContent({ onNext, onPrevious }: StepEmailContentProps) {
-  const { wizardData, updateEmailContent, campaignId, setCampaignId } = useCampaignWizard();
+  const { wizardData, updateEmailContent, campaignId, setCampaignId, setStep } = useCampaignWizard();
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign();
+  const { showError } = useToastContext();
   const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Check if we should return to Review after saving
+  const returnToStep = searchParams.get("returnTo");
 
   const {
-    register,
     handleSubmit,
     watch,
     formState: { errors, isValid },
@@ -111,11 +119,29 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
       }
     } catch (error) {
       console.error("Failed to save draft:", error);
-    } finally {
+      const errorMessage = getErrorMessage(error);
+      showError(
+        campaignId ? "Update Failed" : "Creation Failed",
+        errorMessage,
+        6000
+      );
       setIsSavingDraft(false);
+      return; // Don't navigate on error
     }
     
-    onNext();
+    setIsSavingDraft(false);
+    
+    // If editing from Review, return to Review step instead of next
+    if (returnToStep) {
+      const returnStep = parseInt(returnToStep, 10);
+      const currentParams = new URLSearchParams(searchParams);
+      currentParams.set("step", returnStep.toString());
+      currentParams.delete("returnTo"); // Remove returnTo param
+      navigate(`?${currentParams.toString()}`, { replace: true });
+      setStep(returnStep);
+    } else {
+      onNext();
+    }
   };
 
   const handleSaveDraft = async () => {
@@ -181,8 +207,26 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
       }
     } catch (error) {
       console.error("Failed to save draft:", error);
-    } finally {
+      const errorMessage = getErrorMessage(error);
+      showError(
+        campaignId ? "Update Failed" : "Creation Failed",
+        errorMessage,
+        6000
+      );
       setIsSavingDraft(false);
+      return; // Don't navigate on error
+    }
+    
+    setIsSavingDraft(false);
+    
+    // If editing from Review, return to Review step after saving
+    if (returnToStep) {
+      const returnStep = parseInt(returnToStep, 10);
+      const currentParams = new URLSearchParams(searchParams);
+      currentParams.set("step", returnStep.toString());
+      currentParams.delete("returnTo"); // Remove returnTo param
+      navigate(`?${currentParams.toString()}`, { replace: true });
+      setStep(returnStep);
     }
   };
 

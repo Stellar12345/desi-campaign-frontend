@@ -4,24 +4,24 @@ import { useCampaigns, useDeleteCampaign } from "@/hooks/useCampaigns";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 import Skeleton from "@/components/ui/Skeleton";
-import { formatDateString } from "@/utils/format";
+import { formatDateString, getErrorMessage } from "@/utils/format";
+import { useToastContext } from "@/contexts/ToastContext";
 import { useState } from "react";
 import ConfirmModal from "@/components/users/ConfirmModal";
 import type { Campaign } from "@/types";
 
 export default function CampaignsPage() {
   const navigate = useNavigate();
-  const { data: campaignsData, isLoading } = useCampaigns();
+  // Get only DRAFT campaigns from API
+  const { data: campaignsData, isLoading } = useCampaigns("DRAFT");
   const deleteCampaign = useDeleteCampaign();
+  const { showSuccess, showError } = useToastContext();
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; campaignId?: string; campaignName?: string }>({
     isOpen: false,
   });
 
   // Ensure campaigns is always an array
-  const campaigns = Array.isArray(campaignsData) ? campaignsData : [];
-
-  // Filter to only show DRAFT campaigns
-  const draftCampaigns = campaigns.filter((c) => c.status === "DRAFT");
+  const draftCampaigns = Array.isArray(campaignsData) ? campaignsData : [];
 
   // Local filter for campaign channel (EMAIL vs WHATSAPP)
   const [channelFilter, setChannelFilter] = useState<"EMAIL" | "WHATSAPP">("EMAIL");
@@ -76,8 +76,14 @@ export default function CampaignsPage() {
 
   const handleDelete = async () => {
     if (deleteModal.campaignId) {
-      await deleteCampaign.mutateAsync(deleteModal.campaignId);
-      setDeleteModal({ isOpen: false });
+      try {
+        await deleteCampaign.mutateAsync(deleteModal.campaignId);
+        showSuccess("Campaign Deleted", "Campaign has been deleted successfully.");
+        setDeleteModal({ isOpen: false });
+      } catch (error) {
+        const errorMessage = getErrorMessage(error);
+        showError("Delete Failed", errorMessage, 6000);
+      }
     }
   };
 
@@ -106,24 +112,32 @@ export default function CampaignsPage() {
             <button
               type="button"
               onClick={() => setChannelFilter("WHATSAPP")}
-              className={`px-3 py-1 text-sm font-medium rounded-full transition-colors ${
+              className={`px-3 py-1 text-sm font-medium rounded-full transition-colors relative ${
                 channelFilter === "WHATSAPP"
                   ? "bg-white shadow text-green-600"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
               WhatsApp
+              <span className="ml-1.5 text-xs text-gray-400">(Coming Soon)</span>
             </button>
           </div>
 
-          <Button
-            onClick={() =>
-              navigate(`/campaigns/new?channel=${channelFilter.toLowerCase()}`)
-            }
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            {channelFilter === "EMAIL" ? "Create Email Campaign" : "Create WhatsApp Campaign"}
-          </Button>
+          {channelFilter === "EMAIL" ? (
+            <Button
+              onClick={() =>
+                navigate(`/campaigns/new?channel=${channelFilter.toLowerCase()}`)
+              }
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Create Email Campaign
+            </Button>
+          ) : (
+            <Button disabled>
+              <Plus className="w-5 h-5 mr-2" />
+              Coming Soon
+            </Button>
+          )}
         </div>
       </div>
 
@@ -140,20 +154,27 @@ export default function CampaignsPage() {
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Plus className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No campaigns yet</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {channelFilter === "EMAIL" ? "No draft campaigns yet" : "WhatsApp Campaigns Coming Soon"}
+            </h3>
             <p className="text-gray-600 mb-4">
-              Get started by creating your first{" "}
-              {channelFilter === "EMAIL" ? "email" : "WhatsApp"} campaign.
+              {channelFilter === "EMAIL" 
+                ? "Get started by creating your first email campaign."
+                : "WhatsApp campaign creation will be available soon. Stay tuned!"}
             </p>
-            <Button
-              onClick={() =>
-                navigate(`/campaigns/new?channel=${channelFilter.toLowerCase()}`)
-              }
-            >
-              {channelFilter === "EMAIL"
-                ? "Create Email Campaign"
-                : "Create WhatsApp Campaign"}
-            </Button>
+            {channelFilter === "EMAIL" ? (
+              <Button
+                onClick={() =>
+                  navigate(`/campaigns/new?channel=${channelFilter.toLowerCase()}`)
+                }
+              >
+                Create Email Campaign
+              </Button>
+            ) : (
+              <Button disabled>
+                Coming Soon
+              </Button>
+            )}
           </div>
         </div>
       ) : (

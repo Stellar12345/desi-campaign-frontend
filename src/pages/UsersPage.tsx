@@ -12,6 +12,8 @@ import {
   useRestoreUser,
   useHardDeleteUser,
 } from "@/hooks/useUsers";
+import { useToastContext } from "@/contexts/ToastContext";
+import { getErrorMessage } from "@/utils/format";
 import type { User, CreateUserPayload, UpdateUserPayload } from "@/types";
 
 export default function UsersPage() {
@@ -22,6 +24,7 @@ export default function UsersPage() {
   const updateUser = useUpdateUser();
   const restoreUser = useRestoreUser();
   const hardDeleteUser = useHardDeleteUser();
+  const { showSuccess, showError } = useToastContext();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -46,34 +49,38 @@ export default function UsersPage() {
   };
 
   const handleSubmit = (data: CreateUserPayload | UpdateUserPayload) => {
-    console.log("✅ handleSubmit called in UsersPage");
-    console.log("✅ Editing user:", editingUser?.id);
-    console.log("✅ Payload:", data);
-    
     if (editingUser) {
-      console.log("✅ Calling updateUser.mutate with:", { id: editingUser.id, payload: data });
       updateUser.mutate(
         { id: editingUser.id, payload: data as UpdateUserPayload },
         {
           onSuccess: () => {
-            console.log("✅ Update successful!");
+            showSuccess("User Updated", "User has been updated successfully.");
             setIsDrawerOpen(false);
             setEditingUser(null);
           },
           onError: (error) => {
-            console.error("❌ Update failed:", error);
+            const errorMessage = getErrorMessage(error);
+            showError(
+              "Update Failed",
+              errorMessage,
+              6000
+            );
           },
         }
       );
     } else {
-      console.log("✅ Calling createUser.mutate");
       createUser.mutate(data as CreateUserPayload, {
         onSuccess: () => {
-          console.log("✅ Create successful!");
+          showSuccess("User Created", "User has been created successfully.");
           setIsDrawerOpen(false);
         },
         onError: (error) => {
-          console.error("❌ Create failed:", error);
+          const errorMessage = getErrorMessage(error);
+          showError(
+            "Creation Failed",
+            errorMessage,
+            6000
+          );
         },
       });
     }
@@ -92,13 +99,23 @@ export default function UsersPage() {
     if (type === "restore") {
       restoreUser.mutate(userId, {
         onSuccess: () => {
+          showSuccess("User Restored", "User has been restored successfully.");
           setConfirmModal({ isOpen: false, type: "restore", userId: "" });
+        },
+        onError: (error) => {
+          const errorMessage = getErrorMessage(error);
+          showError("Restore Failed", errorMessage, 6000);
         },
       });
     } else if (type === "hard") {
       hardDeleteUser.mutate(userId, {
         onSuccess: () => {
+          showSuccess("User Deleted", "User has been permanently deleted.");
           setConfirmModal({ isOpen: false, type: "hard", userId: "" });
+        },
+        onError: (error) => {
+          const errorMessage = getErrorMessage(error);
+          showError("Delete Failed", errorMessage, 6000);
         },
       });
     }

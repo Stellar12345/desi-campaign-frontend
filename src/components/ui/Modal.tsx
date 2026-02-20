@@ -11,8 +11,6 @@ interface ModalProps {
 }
 
 export default function Modal({ isOpen, onClose, title, children, size = "md" }: ModalProps) {
-  if (!isOpen) return null;
-
   const sizes = {
     sm: "max-w-md",
     md: "max-w-lg",
@@ -22,13 +20,17 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
 
   // Prevent background scrolling while modal is open
   useEffect(() => {
+    if (!isOpen) return;
+
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.body.style.overflow = originalOverflow || "";
     };
-  }, []);
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div
@@ -41,7 +43,9 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
       {/* Modal */}
       <div
         className={cn(
-          "relative bg-white rounded-2xl shadow-xl w-full mx-4",
+          "relative bg-white rounded-2xl shadow-xl w-full mx-4 my-4",
+          "max-h-[90vh] overflow-hidden flex flex-col",
+          "md:max-h-[85vh]",
           sizes[size],
           "animate-in fade-in zoom-in duration-200"
         )}
@@ -49,11 +53,11 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
       >
         {/* Header */}
         {title && (
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+          <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 flex-shrink-0">
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900 pr-2 truncate">{title}</h2>
             <button
               onClick={onClose}
-              className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              className="p-1 rounded-lg hover:bg-gray-100 transition-colors flex-shrink-0"
             >
               <X className="w-5 h-5 text-gray-500" />
             </button>
@@ -61,7 +65,7 @@ export default function Modal({ isOpen, onClose, title, children, size = "md" }:
         )}
 
         {/* Content */}
-        <div className="p-6">{children}</div>
+        <div className="p-4 md:p-6 overflow-y-auto flex-1">{children}</div>
       </div>
     </div>
   );

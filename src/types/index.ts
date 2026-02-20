@@ -5,6 +5,7 @@ export interface Contact {
   channelCode: string;
   email: string;
   phone: string;
+  countryCode?: string; // For WhatsApp: country code (e.g., "+1", "+91")
   street: string;
   city: string;
   state: string;

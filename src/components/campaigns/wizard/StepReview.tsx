@@ -1,5 +1,6 @@
 import { Edit } from "lucide-react";
 import { useCampaignWizard } from "@/contexts/CampaignWizardContext";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Button from "@/components/ui/Button";
 import Badge from "@/components/ui/Badge";
 
@@ -11,6 +12,17 @@ interface StepReviewProps {
 
 export default function StepReview({ onNext, onPrevious, onEditStep }: StepReviewProps) {
   const { wizardData } = useCampaignWizard();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Handle edit from Review - add returnTo=4 query param
+  const handleEditStep = (step: number) => {
+    const currentParams = new URLSearchParams(searchParams);
+    currentParams.set("step", step.toString());
+    currentParams.set("returnTo", "4"); // Mark that we should return to Review after saving
+    navigate(`?${currentParams.toString()}`, { replace: true });
+    onEditStep(step);
+  };
 
   return (
     <div className="space-y-6">
@@ -28,7 +40,7 @@ export default function StepReview({ onNext, onPrevious, onEditStep }: StepRevie
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onEditStep(1)}
+                onClick={() => handleEditStep(1)}
                 className="text-blue-600"
               >
                 <Edit className="w-4 h-4 mr-1" />
@@ -72,7 +84,7 @@ export default function StepReview({ onNext, onPrevious, onEditStep }: StepRevie
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onEditStep(3)}
+                onClick={() => handleEditStep(3)}
                 className="text-blue-600"
               >
                 <Edit className="w-4 h-4 mr-1" />
@@ -95,7 +107,7 @@ export default function StepReview({ onNext, onPrevious, onEditStep }: StepRevie
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onEditStep(2)}
+              onClick={() => handleEditStep(2)}
               className="text-blue-600"
             >
               <Edit className="w-4 h-4 mr-1" />

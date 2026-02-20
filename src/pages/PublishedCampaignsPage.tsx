@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Eye, BarChart3 } from "lucide-react";
-import { usePublishedCampaignsPaginated } from "@/hooks/useCampaigns";
-import type { Campaign } from "@/types";
+import { usePublishedCampaignsPaginated, useCampaign } from "@/hooks/useCampaigns";
+import type { Campaign, PaginatedCampaignsResponse } from "@/types";
 import Skeleton from "@/components/ui/Skeleton";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
@@ -14,13 +14,17 @@ const RESULTS_PER_PAGE = 10;
 
 export default function PublishedCampaignsPage() {
   const [page, setPage] = useState(1);
-  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const navigate = useNavigate();
+  
+  // Fetch full campaign details when a campaign is selected
+  const { data: selectedCampaign, isLoading: isLoadingCampaign } = useCampaign(selectedCampaignId || "");
 
   const { data, isLoading, isFetching } = usePublishedCampaignsPaginated(page, RESULTS_PER_PAGE);
 
-  const items = data?.items ?? [];
-  const pageInfo = data?.pageInfo;
+  const campaignData = data as PaginatedCampaignsResponse | undefined;
+  const items = campaignData?.items ?? [];
+  const pageInfo = campaignData?.pageInfo;
 
   const handlePrev = () => {
     if (pageInfo?.hasPrevPage && pageInfo.prevPage) {
@@ -84,7 +88,7 @@ export default function PublishedCampaignsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((campaign) => (
+                {items.map((campaign: Campaign) => (
                   <TableRow key={campaign.id}>
                     <TableCell>{campaign.name}</TableCell>
                     <TableCell>{campaign.subject}</TableCell>
@@ -100,7 +104,7 @@ export default function PublishedCampaignsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setSelectedCampaign(campaign)}
+                          onClick={() => setSelectedCampaignId(campaign.id)}
                         >
                           <Eye className="w-4 h-4 mr-1" />
                           View Mail
@@ -152,23 +156,89 @@ export default function PublishedCampaignsPage() {
         )}
       </div>
 
-      {/* HTML Preview Modal */}
+      {/* Campaign Details Modal */}
       <Modal
-        isOpen={!!selectedCampaign}
-        onClose={() => setSelectedCampaign(null)}
-        title={selectedCampaign ? `Preview: ${selectedCampaign.name}` : ""}
+        isOpen={!!selectedCampaignId}
+        onClose={() => setSelectedCampaignId(null)}
+        title={selectedCampaign ? `Campaign Details: ${selectedCampaign.name}` : "Campaign Details"}
         size="xl"
       >
-        {selectedCampaign?.htmlBody ? (
-          <div className="border rounded-lg overflow-hidden" style={{ height: "70vh" }}>
-            <iframe
-              title="Campaign HTML Preview"
-              srcDoc={selectedCampaign.htmlBody}
-              style={{ width: "100%", height: "100%", border: "none" }}
-            />
+        {isLoadingCampaign ? (
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        ) : selectedCampaign ? (
+          <div className="space-y-4 md:space-y-6">
+            {/* Campaign Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-1">Campaign Name</p>
+                <p className="text-base text-gray-900">{selectedCampaign.name}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-1">Subject</p>
+                <p className="text-base text-gray-900">{selectedCampaign.subject}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-1">Channel</p>
+                <p className="text-base text-gray-900">{selectedCampaign.channelCode}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-1">Provider</p>
+                <p className="text-base text-gray-900">{selectedCampaign.apiProvider}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-1">Status</p>
+                <div>{renderStatusBadge(selectedCampaign.status)}</div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-1">Created At</p>
+                <p className="text-base text-gray-900">{formatDateString(selectedCampaign.createdAt)}</p>
+              </div>
+              {selectedCampaign.sentAt && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Sent At</p>
+                  <p className="text-base text-gray-900">{formatDateString(selectedCampaign.sentAt)}</p>
+                </div>
+              )}
+              {selectedCampaign.scheduledAt && (
+                <div>
+                  <p className="text-sm font-medium text-gray-500 mb-1">Scheduled At</p>
+                  <p className="text-base text-gray-900">{formatDateString(selectedCampaign.scheduledAt)}</p>
+                </div>
+              )}
+            </div>
+
+            {/* HTML Preview */}
+            {selectedCampaign.htmlBody && (
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">Email Preview</h3>
+                <div className="border rounded-lg overflow-hidden h-[50vh] min-h-[300px] md:h-[60vh]">
+                  <iframe
+                    title="Campaign HTML Preview"
+                    srcDoc={selectedCampaign.htmlBody}
+                    className="w-full h-full border-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Text Body (if available) */}
+            {selectedCampaign.textBody && (
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-2">Text Content</h3>
+                <div className="p-3 md:p-4 bg-gray-50 rounded-lg overflow-x-auto">
+                  <pre className="text-xs md:text-sm text-gray-700 whitespace-pre-wrap font-sans">
+                    {selectedCampaign.textBody}
+                  </pre>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
-          <p className="text-sm text-gray-600">No HTML content available for this campaign.</p>
+          <p className="text-sm text-gray-600">Failed to load campaign details.</p>
         )}
       </Modal>
     </div>

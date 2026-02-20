@@ -1,10 +1,11 @@
 import { AlertTriangle } from "lucide-react";
 import { useCampaignWizard } from "@/contexts/CampaignWizardContext";
-import { usePublishCampaign, useCreateCampaign, useUpdateCampaign } from "@/hooks/useCampaigns";
+import { usePublishCampaign, useCreateCampaign } from "@/hooks/useCampaigns";
 import Button from "@/components/ui/Button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToastContext } from "@/contexts/ToastContext";
+import { getErrorMessage } from "@/utils/format";
 import { convertToEmailHtml } from "@/components/campaigns/CampaignEmailEditor";
 
 interface StepPublishProps {
@@ -15,7 +16,6 @@ export default function StepPublish({ onPrevious }: StepPublishProps) {
   const { wizardData, resetWizard, campaignId } = useCampaignWizard();
   const publishCampaign = usePublishCampaign();
   const createCampaign = useCreateCampaign();
-  const updateCampaign = useUpdateCampaign();
   const navigate = useNavigate();
   const { showSuccess, showError } = useToastContext();
   const [isPublishing, setIsPublishing] = useState(false);
@@ -25,19 +25,8 @@ export default function StepPublish({ onPrevious }: StepPublishProps) {
     try {
       let finalCampaignId = campaignId;
 
-      // If editing existing campaign, update it first with all current data
-      if (finalCampaignId) {
-        await updateCampaign.mutateAsync({
-          id: finalCampaignId,
-          payload: {
-            ...wizardData.basicInfo,
-            htmlBody: convertToEmailHtml(wizardData.emailContent.htmlBody),
-            textBody: wizardData.emailContent.textBody,
-            contacts: wizardData.contacts,
-          },
-        });
-      } else {
-        // If no campaign ID, create the campaign first
+      // If no campaign ID, create the campaign first
+      if (!finalCampaignId) {
         const created = await createCampaign.mutateAsync({
           ...wizardData.basicInfo,
           htmlBody: convertToEmailHtml(wizardData.emailContent.htmlBody),
@@ -52,50 +41,27 @@ export default function StepPublish({ onPrevious }: StepPublishProps) {
         throw new Error("No campaignId available to publish");
       }
 
-      // Publish the campaign
+      // Publish the campaign directly (no update call needed)
       const publishResponse = await publishCampaign.mutateAsync({
         campaignId: finalCampaignId,
       });
 
-      // Show success notification with campaign details
-      if (publishResponse && typeof publishResponse === 'object') {
-        const responseData = (publishResponse as any).data;
-        if (responseData) {
-          const sent = responseData.sent || 0;
-          const failed = responseData.failed || 0;
-          const totalRecipients = responseData.totalRecipients || 0;
-          const emails = responseData.emails || [];
-          
-          const message = `Sent to ${sent} recipient(s)${failed > 0 ? `, ${failed} failed` : ""}. Total: ${totalRecipients}${emails.length > 0 ? ` (${emails.slice(0, 3).join(", ")}${emails.length > 3 ? "..." : ""})` : ""}`;
-          
-          showSuccess(
-            "Campaign Published Successfully!",
-            message,
-            8000 // Show for 8 seconds
-          );
-        } else {
-          showSuccess(
-            "Campaign Published Successfully!",
-            (publishResponse as any).message || "Your campaign has been sent to all selected recipients.",
-            5000
-          );
-        }
-      } else {
-        showSuccess(
-          "Campaign Published Successfully!",
-          "Your campaign has been sent to all selected recipients.",
-          5000
-        );
-      }
+      // Show success notification with message from API
+      const successMessage = (publishResponse as any)?.message || "Campaign published successfully";
+      showSuccess(
+        "Campaign Published",
+        successMessage,
+        5000
+      );
 
       // Reset wizard and redirect after a short delay to show notification
       setTimeout(() => {
         resetWizard();
         navigate("/campaigns");
       }, 1000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to publish campaign:", error);
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to publish campaign";
+      const errorMessage = getErrorMessage(error);
       showError(
         "Publish Failed",
         errorMessage,
