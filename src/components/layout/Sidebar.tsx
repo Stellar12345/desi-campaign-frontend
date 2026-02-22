@@ -67,7 +67,7 @@ export default function Sidebar() {
                     cn(
                       "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
                       isActive
-                        ? "bg-blue-50 text-blue-700 font-medium"
+                        ? "bg-[#E9488A] text-white font-medium shadow-md"
                         : "text-gray-700 hover:bg-gray-50"
                     )
                   }

@@ -103,7 +103,7 @@ export default function CampaignsPage() {
               onClick={() => setChannelFilter("EMAIL")}
               className={`px-3 py-1 text-sm font-medium rounded-full transition-colors ${
                 channelFilter === "EMAIL"
-                  ? "bg-white shadow text-blue-600"
+                  ? "bg-white shadow text-[#E9488A]"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
@@ -114,7 +114,7 @@ export default function CampaignsPage() {
               onClick={() => setChannelFilter("WHATSAPP")}
               className={`px-3 py-1 text-sm font-medium rounded-full transition-colors relative ${
                 channelFilter === "WHATSAPP"
-                  ? "bg-white shadow text-green-600"
+                  ? "bg-white shadow text-[#F3B44C]"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >

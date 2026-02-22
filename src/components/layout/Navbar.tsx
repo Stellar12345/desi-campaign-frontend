@@ -30,7 +30,7 @@ export default function Navbar() {
           onClick={() => setIsProfileOpen(!isProfileOpen)}
           className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
         >
-          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-[#FF9E80] flex items-center justify-center">
             <User className="w-5 h-5 text-white" />
           </div>
           <span className="hidden sm:block text-sm font-medium text-gray-700">Admin</span>

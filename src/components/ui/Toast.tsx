@@ -32,14 +32,14 @@ export default function ToastComponent({ toast, onClose }: ToastProps) {
     success: <CheckCircle className="w-5 h-5 text-green-600" />,
     error: <XCircle className="w-5 h-5 text-red-600" />,
     warning: <AlertCircle className="w-5 h-5 text-yellow-600" />,
-    info: <Info className="w-5 h-5 text-blue-600" />,
+    info: <Info className="w-5 h-5 text-[#E9488A]" />,
   };
 
   const styles = {
     success: "bg-green-50 border-green-200 text-green-900",
     error: "bg-red-50 border-red-200 text-red-900",
     warning: "bg-yellow-50 border-yellow-200 text-yellow-900",
-    info: "bg-blue-50 border-blue-200 text-blue-900",
+    info: "bg-[#FF9E80]/10 border-[#FF9E80]/30 text-gray-900",
   };
 
   return (

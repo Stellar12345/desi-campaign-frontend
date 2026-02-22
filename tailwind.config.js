@@ -7,6 +7,15 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Client brand colors
+        'brand-start': 'var(--color-bg-start)',
+        'brand-end': 'var(--color-bg-end)',
+        'brand-accent': 'var(--color-accent-yellow)',
+        'brand-card': 'var(--color-card-bg)',
+        'text-white': 'var(--color-text-white)',
+        'text-primary': 'var(--color-text-primary)',
+        
+        // Existing system colors (kept for compatibility)
         border: "hsl(var(--border))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
@@ -26,6 +35,9 @@ export default {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+      },
+      backgroundImage: {
+        'gradient-brand': 'linear-gradient(135deg, var(--color-bg-start) 0%, var(--color-bg-end) 100%)',
       },
       borderRadius: {
         lg: "var(--radius)",

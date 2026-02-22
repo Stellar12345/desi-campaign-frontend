@@ -23,9 +23,9 @@ export default function Stepper({ currentStep, steps }: StepperProps) {
                   className={cn(
                     "w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300",
                     isCompleted
-                      ? "bg-blue-600 border-blue-600 text-white"
+                      ? "bg-[#F3B44C] border-transparent text-white"
                       : isActive
-                      ? "bg-blue-600 border-blue-600 text-white ring-4 ring-blue-100"
+                      ? "bg-gradient-to-r from-[#E9488A] to-[#F3B44C] border-transparent text-white ring-4 ring-[#FFD465]/30"
                       : "bg-white border-gray-300 text-gray-400"
                   )}
                 >
@@ -56,7 +56,7 @@ export default function Stepper({ currentStep, steps }: StepperProps) {
                 <div
                   className={cn(
                     "flex-1 h-0.5 mx-4 transition-all duration-300",
-                    isCompleted ? "bg-blue-600" : "bg-gray-300"
+                    isCompleted ? "bg-[#F3B44C]" : "bg-gray-300"
                   )}
                 />
               )}

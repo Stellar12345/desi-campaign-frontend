@@ -25,25 +25,25 @@ export default function Dashboard() {
       name: "Total Users",
       value: data?.users.total ?? 0,
       icon: Users,
-      color: "bg-blue-500",
+      color: "bg-[#E9488A]",
     },
     {
       name: "Total Contacts",
       value: data?.contacts.total ?? 0,
       icon: UserPlus,
-      color: "bg-green-500",
+      color: "bg-[#FF9E80]",
     },
     {
       name: "Total Campaigns",
       value: data?.campaigns.total ?? 0,
       icon: Mail,
-      color: "bg-purple-500",
+      color: "bg-[#F3B44C]",
     },
     {
       name: "Delivery Rate",
       value: `${data?.rates.deliveryRate?.toFixed?.(2) ?? 0}%`,
       icon: BarChart3,
-      color: "bg-orange-500",
+      color: "bg-[#FFD465]",
     },
   ];
 
