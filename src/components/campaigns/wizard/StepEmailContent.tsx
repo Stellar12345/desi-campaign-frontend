@@ -7,8 +7,10 @@ import { useCampaignWizard } from "@/contexts/CampaignWizardContext";
 import { useCreateCampaign, useUpdateCampaign } from "@/hooks/useCampaigns";
 import { useToastContext } from "@/contexts/ToastContext";
 import { getErrorMessage } from "@/utils/format";
+import { detectTemplateType } from "@/utils/emailTemplates";
 import Button from "@/components/ui/Button";
 import { CampaignEmailEditor } from "@/components/campaigns/CampaignEmailEditor";
+import { CampaignTemplateBuilder } from "@/components/campaigns/templates/CampaignTemplateBuilder";
 
 const emailContentSchema = z.object({
   textBody: z.string().optional(),
@@ -31,6 +33,28 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   
+  // Detect if HTML is from a template and set mode accordingly
+  // This runs on mount and when HTML body changes (e.g., when editing from Review)
+  const [editorMode, setEditorMode] = useState<"custom" | "template">("custom");
+
+  // Check and set mode based on HTML content - runs on mount and when HTML changes
+  useEffect(() => {
+    const htmlBody = wizardData.emailContent.htmlBody || "";
+    if (htmlBody) {
+      const detectedTemplateType = detectTemplateType(htmlBody);
+      if (detectedTemplateType) {
+        // HTML is from a predefined template - switch to template mode
+        setEditorMode("template");
+      } else {
+        // HTML is from custom editor - stay in custom mode
+        setEditorMode("custom");
+      }
+    } else {
+      // No HTML content - default to custom mode
+      setEditorMode("custom");
+    }
+  }, [wizardData.emailContent.htmlBody]);
+  
   // Check if we should return to Review after saving
   const returnToStep = searchParams.get("returnTo");
 
@@ -52,6 +76,18 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
   }, [wizardData.emailContent, reset]);
 
   const htmlBody = watch("htmlBody");
+
+  const handleTemplateHtmlGenerated = (html: string) => {
+    setValue("htmlBody", html, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    // Update email content in wizard context
+    updateEmailContent({
+      htmlBody: html,
+      textBody: wizardData.emailContent.textBody || "",
+    });
+  };
 
   const onSubmit = async (data: EmailContentFormData) => {
     // Ensure we always store both fields, falling back to empty string for textBody
@@ -234,43 +270,88 @@ export default function StepEmailContent({ onNext, onPrevious }: StepEmailConten
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="space-y-4">
         <h2 className="text-2xl font-bold text-gray-900">Email Content</h2>
-        <p className="text-gray-600">Create your email content with HTML support</p>
+        <p className="text-gray-600">Create your email content with HTML support or use predefined templates</p>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Editor */}
-          <div className="space-y-4">
+        {/* Mode Toggle */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                HTML Body <span className="text-red-500">*</span>
-              </label>
-              <CampaignEmailEditor
-                value={htmlBody || ""}
-                disabled={isSavingDraft}
-                onChange={(content) =>
-                  setValue("htmlBody", content, {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  })
-                }
-              />
-              {errors.htmlBody && (
-                <p className="mt-1 text-sm text-red-600">{errors.htmlBody.message}</p>
-              )}
+              <h3 className="text-sm font-medium text-gray-900 mb-1">Editor Mode</h3>
+              <p className="text-xs text-gray-500">Choose between custom editor or predefined templates</p>
             </div>
-          </div>
-
-          {/* Preview */}
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-700">Live Preview</label>
-            <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm min-h-[400px]">
-              <iframe
-                srcDoc={htmlBody || "<p>Preview will appear here...</p>"}
-                className="w-full h-full min-h-[400px] border-0 rounded"
-                title="Email Preview"
-              />
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setEditorMode("custom")}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  editorMode === "custom"
+                    ? "bg-gradient-to-r from-[#E9488A] to-[#F3B44C] text-white shadow-md"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Custom Editor
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditorMode("template")}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                  editorMode === "template"
+                    ? "bg-gradient-to-r from-[#E9488A] to-[#F3B44C] text-white shadow-md"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                Predefined Templates
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Template Builder */}
+        {editorMode === "template" && (
+          <CampaignTemplateBuilder 
+            onHtmlGenerated={handleTemplateHtmlGenerated}
+            existingHtmlBody={htmlBody || wizardData.emailContent.htmlBody}
+          />
+        )}
+
+        {/* Custom Editor Section */}
+        {editorMode === "custom" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Editor */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  HTML Body <span className="text-red-500">*</span>
+                </label>
+                <CampaignEmailEditor
+                  value={htmlBody || ""}
+                  disabled={isSavingDraft}
+                  onChange={(content) =>
+                    setValue("htmlBody", content, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
+                  }
+                />
+                {errors.htmlBody && (
+                  <p className="mt-1 text-sm text-red-600">{errors.htmlBody.message}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700">Live Preview</label>
+              <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm min-h-[400px]">
+                <iframe
+                  srcDoc={htmlBody || "<p>Preview will appear here...</p>"}
+                  className="w-full h-full min-h-[400px] border-0 rounded"
+                  title="Email Preview"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between pt-6 border-t border-gray-200">

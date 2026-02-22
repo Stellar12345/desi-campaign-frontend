@@ -120,25 +120,6 @@ export default function StepPublish({ onPrevious }: StepPublishProps) {
         </div>
       </div>
 
-      {/* Metrics Placeholder */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Campaign Metrics</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-2xl font-bold text-gray-900">-</p>
-            <p className="text-sm text-gray-600">Sent</p>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-2xl font-bold text-gray-900">-</p>
-            <p className="text-sm text-gray-600">Delivered</p>
-          </div>
-          <div className="text-center p-4 bg-gray-50 rounded-lg">
-            <p className="text-2xl font-bold text-gray-900">-</p>
-            <p className="text-sm text-gray-600">Opened</p>
-          </div>
-        </div>
-      </div>
-
       <div className="flex justify-between pt-6 border-t border-gray-200">
         <Button variant="outline" onClick={onPrevious} disabled={isPublishing}>
           Previous

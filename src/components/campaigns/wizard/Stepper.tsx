@@ -21,18 +21,20 @@ export default function Stepper({ currentStep, steps }: StepperProps) {
                 {/* Step Circle */}
                 <div
                   className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300",
+                    "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 overflow-hidden",
                     isCompleted
-                      ? "bg-[#F3B44C] border-transparent text-white"
+                      ? "bg-[#F3B44C] text-white"
                       : isActive
-                      ? "bg-gradient-to-r from-[#E9488A] to-[#F3B44C] border-transparent text-white ring-4 ring-[#FFD465]/30"
-                      : "bg-white border-gray-300 text-gray-400"
+                      ? "bg-gradient-to-r from-[#E9488A] to-[#F3B44C] text-white ring-5 ring-[#FFD465]/30"
+                      : "bg-white border-2 border-gray-300 text-gray-400"
                   )}
                 >
                   {isCompleted ? (
                     <Check className="w-6 h-6" />
                   ) : step.icon ? (
-                    step.icon
+                    <div className="w-full h-full flex items-center justify-center">
+                      {step.icon}
+                    </div>
                   ) : (
                     <span className="text-sm font-semibold">{step.number}</span>
                   )}
