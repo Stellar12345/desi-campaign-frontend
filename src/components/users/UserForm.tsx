@@ -419,6 +419,7 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
                 channelCode: "EMAIL",
                 email: "",
                 phone: "",
+                countryCode: "",
                 street: "",
                 city: "",
                 state: "",

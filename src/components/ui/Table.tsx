@@ -6,6 +6,10 @@ interface TableProps {
   className?: string;
 }
 
+interface TableCellProps extends TableProps {
+  colSpan?: number;
+}
+
 export function Table({ children, className }: TableProps) {
   return (
     <div className="overflow-x-auto overflow-y-visible">
@@ -45,9 +49,12 @@ export function TableHead({ children, className }: TableProps) {
   );
 }
 
-export function TableCell({ children, className }: TableProps) {
+export function TableCell({ children, className, colSpan }: TableCellProps) {
   return (
-    <td className={cn("px-6 py-4 whitespace-nowrap text-sm text-gray-900 relative", className)}>
+    <td
+      className={cn("px-6 py-4 whitespace-nowrap text-sm text-gray-900 relative", className)}
+      colSpan={colSpan}
+    >
       {children}
     </td>
   );
