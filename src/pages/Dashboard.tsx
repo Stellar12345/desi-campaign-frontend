@@ -1,6 +1,7 @@
 import { Users, UserPlus, Mail, BarChart3, Calendar } from "lucide-react";
 import { useCampaignSummary } from "@/hooks/useCampaigns";
 import { useState } from "react";
+import DashboardCharts from "@/components/dashboard/DashboardCharts";
 
 function formatDate(date: Date): string {
   const year = date.getFullYear();
@@ -144,6 +145,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Enhanced Charts Section */}
+      <DashboardCharts data={data} isLoading={isLoading} />
 
     </div>
   );

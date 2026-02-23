@@ -78,7 +78,7 @@ export const CampaignEmailEditor: FC<CampaignEmailEditorProps> = ({
           height: 450,
           menubar: false,
           branding: false,
-          statusbar: true,
+          statusbar: false,
           resize: true,
           plugins: ["link", "lists", "image", "preview", "code"],
           toolbar:

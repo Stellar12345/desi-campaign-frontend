@@ -175,12 +175,14 @@ export default function StepBasicInfo({ onNext }: StepBasicInfoProps) {
             {...register("channelCode")}
             error={errors.channelCode?.message}
             options={channelCodeOptions}
+            disabled
           />
           <Select
             label="API Provider"
             {...register("apiProvider")}
             error={errors.apiProvider?.message}
             options={apiProviderOptions}
+            disabled
           />
           <Input
             label="Subject"
