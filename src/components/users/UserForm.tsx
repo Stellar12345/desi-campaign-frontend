@@ -19,6 +19,7 @@ const contactSchema = z
     channelCode: z.string().min(1, "Channel code is required"),
     email: z.string().nullable().optional().transform(val => val ?? ""),
     phone: z.string().nullable().optional().transform(val => val ?? ""),
+    countryCode: z.string().nullable().optional().transform(val => val ?? ""),
     street: z.string().nullable().optional().transform(val => val ?? ""),
     city: z.string().nullable().optional().transform(val => val ?? ""),
     state: z.string().nullable().optional().transform(val => val ?? ""),
@@ -113,27 +114,21 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
       phone: user?.phoneNo || "",
       contacts: user
         ? // When editing: map existing contacts
-          user.contacts?.map((c) => {
-            // For WhatsApp contacts, reconstruct full phone from countryCode + phone if available
-            let displayPhone = c.phone || "";
-            if ((c.channelCode === "WHATSAPP" || c.channelCode === "EMAIL_AND_WHATSAPP") && (c as any).countryCode) {
-              displayPhone = `${(c as any).countryCode}${c.phone}`;
-            }
-            return {
-              id: c.id,
-              userId: c.userId,
-              name: c.name,
-              channelCode: c.channelCode,
-              email: c.email,
-              phone: displayPhone,
-              street: c.street || "",
-              city: c.city || "",
-              state: c.state || "",
-              country: c.country || "",
-              postalCode: c.postalCode || "",
-              useSameAddress: false,
-            };
-          }) || []
+          user.contacts?.map((c) => ({
+            id: c.id,
+            userId: c.userId,
+            name: c.name,
+            channelCode: c.channelCode,
+            email: c.email,
+            phone: c.phone || "",
+            countryCode: (c as any).countryCode || "",
+            street: c.street || "",
+            city: c.city || "",
+            state: c.state || "",
+            country: c.country || "",
+            postalCode: c.postalCode || "",
+            useSameAddress: false,
+          })) || []
         : // When creating: add default contact
           [
             {
@@ -141,6 +136,7 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
               channelCode: "EMAIL",
               email: "",
               phone: "",
+              countryCode: "",
               street: "",
               city: "",
               state: "",
@@ -283,14 +279,19 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
       // Always include phone if it exists in the contact data (even if channel doesn't require it)
       // This preserves existing phone data when channel code changes
       if (contact.phone !== undefined && contact.phone !== null && contact.phone !== "") {
-        // For WhatsApp contacts, parse phone number into countryCode and phone
+        // For WhatsApp contacts, use explicit countryCode if provided, otherwise parse
         if (contact.channelCode === "WHATSAPP" || contact.channelCode === "EMAIL_AND_WHATSAPP") {
-          const parsed = parsePhoneNumber(contact.phone);
-          if (parsed) {
-            contactData.countryCode = parsed.countryCode;
-            contactData.phone = parsed.phone;
-          } else {
+          if ((contact as any).countryCode) {
+            contactData.countryCode = (contact as any).countryCode;
             contactData.phone = contact.phone;
+          } else {
+            const parsed = parsePhoneNumber(contact.phone);
+            if (parsed) {
+              contactData.countryCode = parsed.countryCode;
+              contactData.phone = parsed.phone;
+            } else {
+              contactData.phone = contact.phone;
+            }
           }
         } else {
           contactData.phone = contact.phone;
@@ -302,12 +303,17 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
         // Only set phone if channel requires it and no existing phone
         const phoneToUse = idx === 0 && primaryPhone ? primaryPhone : "";
         if (phoneToUse) {
-          const parsed = parsePhoneNumber(phoneToUse);
-          if (parsed) {
-            contactData.countryCode = parsed.countryCode;
-            contactData.phone = parsed.phone;
-          } else {
+          if ((contact as any).countryCode) {
+            contactData.countryCode = (contact as any).countryCode;
             contactData.phone = phoneToUse;
+          } else {
+            const parsed = parsePhoneNumber(phoneToUse);
+            if (parsed) {
+              contactData.countryCode = parsed.countryCode;
+              contactData.phone = parsed.phone;
+            } else {
+              contactData.phone = phoneToUse;
+            }
           }
         } else {
           contactData.phone = "";
@@ -514,24 +520,38 @@ export default function UserForm({ user, onSubmit, onCancel, isLoading }: UserFo
                     {...register(`contacts.${index}.email`)}
                   />
                 )}
-                {/* Always register phone field, even if not visible */}
+                {/* Country code + phone for WhatsApp channels */}
                 {(contactChannelCode === "WHATSAPP" ||
                   contactChannelCode === "EMAIL_AND_WHATSAPP") ? (
-                  <Input
-                    label="Phone"
-                    {...register(`contacts.${index}.phone`)}
-                    error={errors.contacts?.[index]?.phone?.message}
-                    placeholder={
-                      index === 0 && basicPhone
-                        ? `Default: ${basicPhone}`
-                        : "Enter phone number"
-                    }
-                  />
+                  <div className="grid grid-cols-[0.7fr,1.3fr] gap-2">
+                    <Input
+                      label="Country Code"
+                      {...register(`contacts.${index}.countryCode`)}
+                      error={errors.contacts?.[index]?.countryCode?.message}
+                      placeholder="+91"
+                    />
+                    <Input
+                      label="Phone"
+                      {...register(`contacts.${index}.phone`)}
+                      error={errors.contacts?.[index]?.phone?.message}
+                      placeholder={
+                        index === 0 && basicPhone
+                          ? `Default: ${basicPhone}`
+                          : "Enter phone number"
+                      }
+                    />
+                  </div>
                 ) : (
-                  <input
-                    type="hidden"
-                    {...register(`contacts.${index}.phone`)}
-                  />
+                  <>
+                    <input
+                      type="hidden"
+                      {...register(`contacts.${index}.countryCode`)}
+                    />
+                    <input
+                      type="hidden"
+                      {...register(`contacts.${index}.phone`)}
+                    />
+                  </>
                 )}
               </div>
 

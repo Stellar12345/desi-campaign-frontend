@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Drawer from "@/components/ui/Drawer";
@@ -17,7 +17,28 @@ import { getErrorMessage } from "@/utils/format";
 import type { User, CreateUserPayload, UpdateUserPayload } from "@/types";
 
 export default function UsersPage() {
-  const { data: usersData, isLoading } = useUsers();
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const searchFilters = useMemo(() => {
+    const term = searchTerm.trim();
+    if (!term) return {};
+
+    // Decide which field to search on:
+    // - If contains '@' → email
+    // - If looks like a phone number → phoneNo
+    // - Otherwise → firstName
+    if (term.includes("@")) {
+      return { email: term };
+    }
+
+    if (/^[+\d][\d\s-]*$/.test(term)) {
+      return { phoneNo: term };
+    }
+
+    return { firstName: term };
+  }, [searchTerm]);
+
+  const { data: usersData, isLoading } = useUsers(searchFilters);
   // Ensure users is always an array
   const users = Array.isArray(usersData) ? usersData : [];
   const createUser = useCreateUser();
@@ -169,6 +190,8 @@ export default function UsersPage() {
       <UserTable
         users={users}
         isLoading={isLoading}
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
         onEdit={handleEdit}
         onRestore={handleRestore}
         onHardDelete={handleHardDelete}

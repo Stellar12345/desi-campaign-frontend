@@ -7,11 +7,11 @@ const QUERY_KEYS = {
   user: (id: string) => ["users", id] as const,
 };
 
-// Get all users
-export function useUsers() {
+// Get all users (optionally filtered by firstName, email, or phoneNo)
+export function useUsers(filters?: { firstName?: string; email?: string; phoneNo?: string }) {
   return useQuery({
-    queryKey: QUERY_KEYS.users,
-    queryFn: usersApi.getAll,
+    queryKey: [...QUERY_KEYS.users, filters] as const,
+    queryFn: () => usersApi.getAll(filters),
   });
 }
 

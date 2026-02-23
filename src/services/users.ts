@@ -8,9 +8,17 @@ import type {
 } from "@/types";
 
 export const usersApi = {
-  // Get all users
-  getAll: async (): Promise<User[]> => {
-    const response = await apiClient.get<ApiResponse<PaginatedUsersResponse>>("/private/users");
+  // Get all users (optionally filtered by firstName, email, or phoneNo)
+  getAll: async (filters?: { firstName?: string; email?: string; phoneNo?: string }): Promise<User[]> => {
+    const params = new URLSearchParams();
+    if (filters?.firstName) params.set("firstName", filters.firstName);
+    if (filters?.email) params.set("email", filters.email);
+    if (filters?.phoneNo) params.set("phoneNo", filters.phoneNo);
+
+    const queryString = params.toString();
+    const url = queryString ? `/private/users?${queryString}` : "/private/users";
+
+    const response = await apiClient.get<ApiResponse<PaginatedUsersResponse>>(url);
     // Extract users from data.items
     return response.data.data?.items ?? [];
   },
