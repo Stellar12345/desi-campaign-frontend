@@ -24,25 +24,25 @@ export default function Dashboard() {
   const stats = [
     {
       name: "Total Users",
-      value: data?.users.total ?? 0,
+      value: data?.users?.total ?? 0,
       icon: Users,
       color: "bg-[#E9488A]",
     },
     {
       name: "Total Contacts",
-      value: data?.contacts.total ?? 0,
+      value: data?.contacts?.total ?? 0,
       icon: UserPlus,
       color: "bg-[#FF9E80]",
     },
     {
       name: "Total Campaigns",
-      value: data?.campaigns.total ?? 0,
+      value: data?.campaigns?.total ?? 0,
       icon: Mail,
       color: "bg-[#F3B44C]",
     },
     {
       name: "Delivery Rate",
-      value: `${data?.rates.deliveryRate?.toFixed?.(2) ?? 0}%`,
+      value: `${data?.rates?.deliveryRate?.toFixed?.(2) ?? 0}%`,
       icon: BarChart3,
       color: "bg-[#FFD465]",
     },
@@ -128,19 +128,19 @@ export default function Dashboard() {
           <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
             <p className="text-sm text-gray-500 mb-1">Today – Campaigns Sent</p>
             <p className="text-2xl font-bold text-gray-900">
-              {data?.today.campaignsSent ?? 0}
+              {data?.today?.campaignsSent ?? 0}
             </p>
           </div>
           <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
             <p className="text-sm text-gray-500 mb-1">This Month – Deliveries Sent</p>
             <p className="text-2xl font-bold text-gray-900">
-              {data?.thisMonth.deliveriesSent ?? 0}
+              {data?.thisMonth?.deliveriesSent ?? 0}
             </p>
           </div>
           <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
             <p className="text-sm text-gray-500 mb-1">Total Opens</p>
             <p className="text-2xl font-bold text-gray-900">
-              {data?.engagement.totalOpens ?? 0}
+              {data?.engagement?.totalOpens ?? 0}
             </p>
           </div>
         </div>

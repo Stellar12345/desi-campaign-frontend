@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CampaignWizardProvider } from "@/contexts/CampaignWizardContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/layout/Layout";
 import Dashboard from "@/pages/Dashboard";
 import UsersPage from "@/pages/UsersPage";
@@ -9,6 +10,7 @@ import CampaignWizard from "@/components/campaigns/wizard/CampaignWizard";
 import CampaignsPage from "@/pages/CampaignsPage";
 import CampaignSummaryPage from "@/pages/CampaignSummaryPage";
 import PublishedCampaignsPage from "@/pages/PublishedCampaignsPage";
+import LoginPage from "@/pages/LoginPage";
 import { useCampaign } from "@/hooks/useCampaigns";
 import Skeleton from "@/components/ui/Skeleton";
 import { ToastProvider } from "@/contexts/ToastContext";
@@ -17,10 +19,23 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: 1,
+      retry: (failureCount, error: unknown) => {
+        // Don't retry on 401 - will redirect to login
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 401) return false;
+        return failureCount < 1;
+      },
     },
   },
 });
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
 
 function CampaignWizardWrapper() {
   const { id } = useParams<{ id?: string }>();
@@ -51,31 +66,50 @@ function CampaignWizardWrapper() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/campaigns/new" element={<CampaignWizardWrapper />} />
-            <Route path="/campaigns/:id/edit" element={<CampaignWizardWrapper />} />
-            <Route
-              path="/*"
-              element={
-                <CampaignWizardProvider>
-                  <Layout>
-                    <Routes>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/users" element={<UsersPage />} />
-                      <Route path="/users/:id" element={<UserDetailsPage />} />
-                      <Route path="/campaigns" element={<CampaignsPage />} />
-                      <Route path="/campaigns/published" element={<PublishedCampaignsPage />} />
-                      <Route path="/campaigns/:id/summary" element={<CampaignSummaryPage />} />
-                    </Routes>
-                  </Layout>
-                </CampaignWizardProvider>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
-      </ToastProvider>
+      <AuthProvider>
+        <ToastProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route
+                path="/campaigns/new"
+                element={
+                  <ProtectedRoute>
+                    <CampaignWizardWrapper />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/campaigns/:id/edit"
+                element={
+                  <ProtectedRoute>
+                    <CampaignWizardWrapper />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/*"
+                element={
+                  <ProtectedRoute>
+                    <CampaignWizardProvider>
+                      <Layout>
+                        <Routes>
+                          <Route path="/" element={<Dashboard />} />
+                          <Route path="/users" element={<UsersPage />} />
+                          <Route path="/users/:id" element={<UserDetailsPage />} />
+                          <Route path="/campaigns" element={<CampaignsPage />} />
+                          <Route path="/campaigns/published" element={<PublishedCampaignsPage />} />
+                          <Route path="/campaigns/:id/summary" element={<CampaignSummaryPage />} />
+                        </Routes>
+                      </Layout>
+                    </CampaignWizardProvider>
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </BrowserRouter>
+        </ToastProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

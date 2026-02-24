@@ -112,6 +112,9 @@ export const campaignsApi = {
         toDate
       )}`
     );
+    if (response.data.status === "ERROR" || !response.data.data || Array.isArray(response.data.data)) {
+      throw new Error(response.data.message || "Failed to load dashboard summary");
+    }
     return response.data.data;
   },
 
