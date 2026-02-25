@@ -65,61 +65,87 @@ apiClient.interceptors.request.use(
 
 // Response interceptor
 apiClient.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError<ApiResponse<null>>) => {
+  (response) => {
+    const data = response.data as any;
+
+    // Some endpoints may return 200 with an error body – force logout if user is missing
+    if (
+      data &&
+      (data.statusCode === "ADMIN_USER_NOT_FOUND" ||
+        data.message === "User not found." ||
+        (data.httpStatusCode === 401 && data.status === "ERROR" && data.statusCode === "ADMIN_USER_NOT_FOUND"))
+    ) {
+      redirectToLogin();
+      return Promise.reject(new Error("User not found - logging out"));
+    }
+
+    return response;
+  },
+  async (error: AxiosError<ApiResponse<null> & { statusCode?: string }>) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-      // Don't try refresh for login/refresh/logout - let them fail normally
-      if (isPublicAuthRoute(originalRequest.url)) {
-        return Promise.reject(error);
-      }
+    if (error.response?.status === 401 && originalRequest) {
+      const statusCode = (error.response.data as any)?.statusCode;
+      const message = error.response.data?.message;
 
-      if (isRefreshing) {
-        // Queue this request and wait for refresh to complete
-        return new Promise((resolve, reject) => {
-          failedQueue.push({
-            resolve: (token: string) => {
-              if (originalRequest.headers) {
-                originalRequest.headers.Authorization = `Bearer ${token}`;
-              }
-              resolve(apiClient(originalRequest));
-            },
-            reject,
-          });
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      const refreshToken = authApi.getRefreshToken();
-      if (!refreshToken) {
+      // If backend says admin user no longer exists, force logout immediately (no refresh)
+      if (statusCode === "ADMIN_USER_NOT_FOUND" || message === "User not found.") {
         redirectToLogin();
-        isRefreshing = false;
         return Promise.reject(error);
       }
 
-      try {
-        const { accessToken } = await authApi.refreshTokens();
-        processQueue(null, accessToken);
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+      if (!originalRequest._retry) {
+        // Don't try refresh for login/refresh/logout - let them fail normally
+        if (isPublicAuthRoute(originalRequest.url)) {
+          return Promise.reject(error);
         }
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        processQueue(refreshError, null);
-        redirectToLogin();
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
+
+        if (isRefreshing) {
+          // Queue this request and wait for refresh to complete
+          return new Promise((resolve, reject) => {
+            failedQueue.push({
+              resolve: (token: string) => {
+                if (originalRequest.headers) {
+                  originalRequest.headers.Authorization = `Bearer ${token}`;
+                }
+                resolve(apiClient(originalRequest));
+              },
+              reject,
+            });
+          });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        const refreshToken = authApi.getRefreshToken();
+        if (!refreshToken) {
+          redirectToLogin();
+          isRefreshing = false;
+          return Promise.reject(error);
+        }
+
+        try {
+          const { accessToken } = await authApi.refreshTokens();
+          processQueue(null, accessToken);
+          if (originalRequest.headers) {
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          }
+          return apiClient(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          redirectToLogin();
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
       }
     }
 
     // Handle other errors
     if (error.response) {
       const status = error.response.status;
-      const message = error.response.data?.message || "An error occurred";
+      const message = (error.response.data as any)?.message || "An error occurred";
       switch (status) {
         case 403:
           console.error("Forbidden access");

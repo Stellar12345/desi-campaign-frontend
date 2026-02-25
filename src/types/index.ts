@@ -21,6 +21,18 @@ export interface User {
   lastName: string;
   email: string;
   phoneNo: string;
+  // New bulk user fields from backend
+  title?: string | null;
+  companyName?: string | null;
+  corporatePhone?: string | null;
+  city?: string | null;
+  state?: string | null;
+  companyCity?: string | null;
+  companyState?: string | null;
+  companyCountry?: string | null;
+  companyPhone?: string | null;
+  secondaryEmail?: string | null;
+  secondaryEmailSource?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -30,18 +42,34 @@ export interface User {
 
 export interface CreateUserPayload {
   firstName: string;
-  lastName: string;
+  title: string;
+  companyName: string;
   email: string;
-  phoneNo: string;
-  contacts?: Omit<Contact, 'verified' | 'optedOut'>[];
+  corporatePhone: string;
+  city: string;
+  state: string;
+  companyCity: string;
+  companyState: string;
+  companyCountry: string;
+  companyPhone: string;
+  secondaryEmail?: string | null;
+  secondaryEmailSource?: string | null;
 }
 
 export interface UpdateUserPayload {
   firstName?: string;
-  lastName?: string;
+  title?: string;
+  companyName?: string;
   email?: string;
-  phoneNo?: string;
-  contacts?: Omit<Contact, 'verified' | 'optedOut'>[];
+  corporatePhone?: string;
+  city?: string;
+  state?: string;
+  companyCity?: string;
+  companyState?: string;
+  companyCountry?: string;
+  companyPhone?: string;
+  secondaryEmail?: string | null;
+  secondaryEmailSource?: string | null;
 }
 
 export interface ApiResponse<T> {
@@ -243,9 +271,9 @@ export interface CampaignUserStat {
   user: {
     id: string;
     firstName: string;
-    lastName: string;
     email: string;
-    phoneNo: string;
+    corporatePhone: string;
+    companyName: string;
   };
   email: string;
   sent: number;
@@ -254,12 +282,11 @@ export interface CampaignUserStat {
   clickCount: number;
   failed: number;
   unsubscribed: number;
-  lastOpenedAt: string | null;
 }
 
 export interface CampaignSummaryById {
   campaignSummary: CampaignDailySummary;
-  userStats: CampaignUserStat[];
+  contactStats: CampaignUserStat[];
 }
 
 export interface CampaignWizardData {

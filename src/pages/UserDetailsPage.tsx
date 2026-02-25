@@ -65,6 +65,9 @@ export default function UserDetailsPage() {
               <p className="text-base font-medium text-gray-900">
                 {user.firstName} {user.lastName}
               </p>
+              {user.title && (
+                <p className="text-sm text-gray-500 mt-1">{user.title}</p>
+              )}
             </div>
           </div>
           <div className="flex items-start gap-3">
@@ -72,15 +75,39 @@ export default function UserDetailsPage() {
             <div>
               <p className="text-sm text-gray-500">Email</p>
               <p className="text-base font-medium text-gray-900">{user.email}</p>
+              {user.secondaryEmail && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Secondary: {user.secondaryEmail}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-start gap-3">
             <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
             <div>
               <p className="text-sm text-gray-500">Phone Number</p>
-              <p className="text-base font-medium text-gray-900">{user.phoneNo}</p>
+              <p className="text-base font-medium text-gray-900">
+                {user.corporatePhone || user.phoneNo}
+              </p>
+              {user.companyPhone && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Company Phone: {user.companyPhone}
+                </p>
+              )}
             </div>
           </div>
+          {(user.city || user.state) && (
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 w-5" />
+              <div>
+                <p className="text-sm text-gray-500">Person Location</p>
+                <p className="text-base font-medium text-gray-900">
+                  {user.city}
+                  {user.state ? `, ${user.state}` : ""}
+                </p>
+              </div>
+            </div>
+          )}
           <div className="flex items-start gap-3">
             <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
             <div>
@@ -90,61 +117,27 @@ export default function UserDetailsPage() {
               </p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Contacts Card */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Contacts ({user.contacts?.length || 0})
-        </h2>
-        {user.contacts && user.contacts.length > 0 ? (
-          <div className="space-y-4">
-            {user.contacts.map((contact, index) => (
-              <div
-                key={index}
-                className="p-4 border border-gray-200 rounded-lg space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-gray-900">{contact.name}</h3>
-                  <div className="flex items-center gap-2">
-                    {contact.verified && (
-                      <Badge variant="success">Verified</Badge>
-                    )}
-                    {contact.optedOut && (
-                      <Badge variant="warning">Opted Out</Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-500">Channel Code</p>
-                    <p className="text-gray-900 font-medium">{contact.channelCode}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Email</p>
-                    <p className="text-gray-900 font-medium">{contact.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500">Phone</p>
-                    <p className="text-gray-900 font-medium">{contact.phone}</p>
-                  </div>
-                  {contact.street && (
-                    <div>
-                      <p className="text-gray-500">Address</p>
-                      <p className="text-gray-900 font-medium">
-                        {contact.street}, {contact.city}, {contact.state}, {contact.country}{" "}
-                        {contact.postalCode}
-                      </p>
-                    </div>
-                  )}
-                </div>
+          {user.companyName && (
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 w-5" />
+              <div>
+                <p className="text-sm text-gray-500">Company</p>
+                <p className="text-base font-medium text-gray-900">
+                  {user.companyName}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {user.companyCity || user.city}
+                  {user.companyState || user.state
+                    ? `, ${user.companyState || user.state}`
+                    : ""}
+                  {user.companyCountry
+                    ? `, ${user.companyCountry}`
+                    : ""}
+                </p>
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-gray-500 text-center py-8">No contacts available</p>
-        )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Metadata Card */}

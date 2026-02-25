@@ -5,10 +5,11 @@ import type {
   UpdateCampaignPayload,
   PublishCampaignPayload,
   ApiResponse,
-  PaginatedUsersResponse,
   PaginatedCampaignsResponse,
   CampaignSummary,
   CampaignSummaryById,
+  CampaignDailySummary,
+  User,
 } from "@/types";
 
 export const campaignsApi = {
@@ -91,17 +92,103 @@ export const campaignsApi = {
     return response.data; // Return full response including data, message, etc.
   },
 
-  // Get contacts for campaign, filtered by channel (EMAIL, WHATSAPP, etc.)
-  // This reuses the /private/users endpoint with ?channelCode=...
-  getContacts: async (channelCode: string): Promise<PaginatedUsersResponse["items"]> => {
-    const response = await apiClient.get<ApiResponse<PaginatedUsersResponse>>(
-      `/private/users?channelCode=${encodeURIComponent(channelCode)}`
-    );
-    return response.data.data?.items ?? [];
+  // Get contacts for campaign, filtered by campaignType (EMAIL, WHATSAPP, EMAIL_AND_WHATSAPP)
+  // Uses the bulk users endpoint: /private/bulk?campaignType=...&page=...&limit=...
+  getContacts: async (
+    campaignType: string,
+    page: number,
+    limit: number,
+    search?: string
+  ): Promise<{
+    items: User[];
+    pageInfo?: {
+      totalResults: number;
+      pageCount: number;
+      resultsPerPage: number;
+      currentPage: number;
+      totalPages: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+      nextPage: number | null;
+      prevPage: number | null;
+    };
+  }> => {
+    const params = new URLSearchParams();
+    params.set("campaignType", campaignType);
+    params.set("page", String(page));
+    params.set("limit", String(limit));
+    if (search && search.trim().length > 0) {
+      params.set("search", search.trim());
+    }
+
+    const response = await apiClient.get<
+      ApiResponse<{
+        items: Array<{
+          id: string;
+          firstName: string;
+          title?: string | null;
+          companyName?: string | null;
+          email: string;
+          corporatePhone: string;
+          city?: string | null;
+          state?: string | null;
+          companyCity?: string | null;
+          companyState?: string | null;
+          companyCountry?: string | null;
+          companyPhone?: string | null;
+          secondaryEmail?: string | null;
+          secondaryEmailSource?: string | null;
+          isDeleted: boolean;
+          deletedAt: string | null;
+          createdAt: string;
+          updatedAt: string;
+        }>;
+        pageInfo?: {
+          totalResults: number;
+          pageCount: number;
+          resultsPerPage: number;
+          currentPage: number;
+          totalPages: number;
+          hasNextPage: boolean;
+          hasPrevPage: boolean;
+          nextPage: number | null;
+          prevPage: number | null;
+        };
+      }>
+    >(`/private/bulk?${params.toString()}`);
+
+    const items = response.data.data?.items ?? [];
+    const pageInfo = response.data.data?.pageInfo;
+
+    const mapped: User[] = items.map((item) => ({
+      id: item.id,
+      firstName: item.firstName,
+      lastName: "",
+      email: item.email,
+      phoneNo: item.corporatePhone,
+      title: item.title ?? null,
+      companyName: item.companyName ?? null,
+      corporatePhone: item.corporatePhone,
+      city: item.city ?? null,
+      state: item.state ?? null,
+      companyCity: item.companyCity ?? null,
+      companyState: item.companyState ?? null,
+      companyCountry: item.companyCountry ?? null,
+      companyPhone: item.companyPhone ?? null,
+      secondaryEmail: item.secondaryEmail ?? null,
+      secondaryEmailSource: item.secondaryEmailSource ?? null,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      deletedAt: item.deletedAt,
+      isDeleted: item.isDeleted,
+      contacts: [],
+    }));
+
+    return { items: mapped, pageInfo };
   },
 
   // Attach contacts to an existing campaign
-  addContacts: async (payload: { campaignId: string; contacts: string[] }): Promise<void> => {
+  addContacts: async (payload: { campaignId: string; userIds: string[] }): Promise<void> => {
     await apiClient.post("/private/campaigns/contacts", payload);
   },
 
@@ -120,9 +207,30 @@ export const campaignsApi = {
 
   // Per-campaign summary for a published campaign
   getCampaignSummary: async (id: string): Promise<CampaignSummaryById> => {
-    const response = await apiClient.get<ApiResponse<CampaignSummaryById>>(
-      `/private/campaigns/summary/campaign/${id}`
-    );
-    return response.data.data;
+    const response = await apiClient.get<
+      ApiResponse<{
+        campaignSummary: CampaignDailySummary;
+        contactStats: Array<{
+          userId: string;
+          user: {
+            id: string;
+            firstName: string;
+            email: string;
+            corporatePhone: string;
+            companyName: string;
+          };
+          email: string;
+          sent: number;
+          delivered: number;
+          openCount: number;
+          clickCount: number;
+          failed: number;
+          unsubscribed: number;
+        }>;
+      }>
+    >(`/private/campaigns/summary/campaign/${id}`);
+
+    // Directly return as CampaignSummaryById since types match the new shape
+    return response.data.data as CampaignSummaryById;
   },
 };

@@ -30,40 +30,42 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
   const { wizardData, updateContacts, campaignId, setCampaignId, setStep } = useCampaignWizard();
   // Use the selected channel from step 1 to fetch matching contacts (EMAIL, WHATSAPP, etc.)
   const channelCode = wizardData.basicInfo.channelCode || "EMAIL";
-  const { data: contactsData = [], isLoading } = useCampaignContacts(channelCode);
+  const [contactsPage, setContactsPage] = useState(1);
+  const contactsLimit = 10;
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const {
+    data: contactsResponse,
+    isLoading,
+    isFetching,
+  } = useCampaignContacts(channelCode, contactsPage, contactsLimit, searchTerm);
+
+  const contactsSource = contactsResponse?.items ?? [];
+  const contactsPageInfo = contactsResponse?.pageInfo;
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign();
   const updateCampaignContacts = useUpdateCampaignContacts();
   const { showError } = useToastContext();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [searchTerm, setSearchTerm] = useState("");
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [selectedContacts, setSelectedContacts] = useState<string[]>(wizardData.contacts);
   
   // Check if we should return to Review after saving
   const returnToStep = searchParams.get("returnTo");
 
-  // Flatten contacts from users if needed
-  const contacts: ContactOption[] = Array.isArray(contactsData)
-    ? contactsData.flatMap((item: any) => {
-        // If item has contacts array, flatten them
-        if (item.contacts && Array.isArray(item.contacts)) {
-          return item.contacts.map((contact: any) => ({
-            id: contact.id || contact.contactId || `${item.id}-${contact.email}`,
-            name: contact.name || `${item.firstName || ""} ${item.lastName || ""}`.trim(),
-            email: contact.email,
-            phone: contact.phone,
-          }));
-        }
-        // Otherwise treat as direct contact
-        return {
-          id: item.id || item.contactId,
-          name: item.name || `${item.firstName || ""} ${item.lastName || ""}`.trim(),
-          email: item.email,
-          phone: item.phone,
-        };
-      })
+  // Map bulk users into simple contact options
+  const contacts: ContactOption[] = Array.isArray(contactsSource)
+    ? contactsSource.map((item: any) => ({
+        id: item.id,
+        name:
+          `${item.firstName || ""} ${item.lastName || ""}`.trim() ||
+          item.companyName ||
+          "Contact",
+        email: item.email,
+        // Prefer explicit phone field, then phoneNo, then corporatePhone
+        phone: item.phone || item.phoneNo || item.corporatePhone,
+      }))
     : [];
 
   const filteredContacts = contacts.filter(
@@ -97,7 +99,7 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
         console.log("🔄 Updating existing campaign contacts:", campaignId);
         await updateCampaignContacts.mutateAsync({
           campaignId,
-          contacts: selectedContacts,
+          userIds: selectedContacts,
         });
       } else {
         // CREATE: First time only, use POST to create (if basic info exists)
@@ -251,7 +253,10 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
             type="text"
             placeholder="Search contacts..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setContactsPage(1);
+            }}
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -319,6 +324,40 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
             </div>
           )}
         </div>
+
+        {/* Contacts Pagination */}
+        {contactsPageInfo && (
+          <div className="flex items-center justify-between px-2 py-2 text-sm text-gray-600">
+            <div>
+              Page{" "}
+              <span className="font-medium">{contactsPageInfo.currentPage}</span> of{" "}
+              <span className="font-medium">{contactsPageInfo.totalPages}</span>
+              {isFetching && (
+                <span className="ml-2 text-xs text-gray-400">Updating…</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setContactsPage((p) => Math.max(1, p - 1))}
+                disabled={!contactsPageInfo.hasPrevPage || isFetching}
+              >
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setContactsPage((p) => p + 1)}
+                disabled={!contactsPageInfo.hasNextPage || isFetching}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-between pt-6 border-t border-gray-200">

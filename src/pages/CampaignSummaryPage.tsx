@@ -35,7 +35,7 @@ export default function CampaignSummaryPage() {
     );
   }
 
-  const { campaignSummary, userStats = [] } = data || {};
+  const { campaignSummary, contactStats = [] } = data || {};
 
   if (!campaignSummary) {
     return (
@@ -85,10 +85,10 @@ export default function CampaignSummaryPage() {
         <MetricCard label="Date" value={new Date(campaignSummary.date).toLocaleDateString()} />
       </div>
 
-      {/* User stats table */}
+      {/* Recipient stats table */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Recipient Engagement</h2>
-        {userStats.length === 0 ? (
+        {contactStats.length === 0 ? (
           <p className="text-gray-500 text-sm">No recipient stats available.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -105,19 +105,17 @@ export default function CampaignSummaryPage() {
                 </tr>
               </thead>
               <tbody>
-                {userStats.map((s) => (
+                {contactStats.map((s) => (
                   <tr key={s.userId} className="border-b border-gray-100 last:border-0">
                     <td className="py-2 pr-4 text-gray-900">
-                      {s.user.firstName} {s.user.lastName}
+                      {s.user.firstName}
                     </td>
                     <td className="py-2 pr-4 text-gray-700">{s.email}</td>
                     <td className="py-2 pr-4 text-right">{s.sent}</td>
                     <td className="py-2 pr-4 text-right">{s.delivered}</td>
                     <td className="py-2 pr-4 text-right">{s.openCount}</td>
                     <td className="py-2 pr-4 text-right">{s.clickCount}</td>
-                    <td className="py-2 pr-4 text-right text-gray-500">
-                      {s.lastOpenedAt ? new Date(s.lastOpenedAt).toLocaleString() : "-"}
-                    </td>
+                    <td className="py-2 pr-4 text-right text-gray-500">-</td>
                   </tr>
                 ))}
               </tbody>

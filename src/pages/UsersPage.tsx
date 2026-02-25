@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Plus, Upload } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Drawer from "@/components/ui/Drawer";
 import UserTable from "@/components/users/UserTable";
@@ -11,6 +11,7 @@ import {
   useUpdateUser,
   useRestoreUser,
   useHardDeleteUser,
+  useImportUsers,
 } from "@/hooks/useUsers";
 import { useToastContext } from "@/contexts/ToastContext";
 import { getErrorMessage } from "@/utils/format";
@@ -18,6 +19,8 @@ import type { User, CreateUserPayload, UpdateUserPayload } from "@/types";
 
 export default function UsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [resultsPerPage] = useState(8);
 
   const searchFilters = useMemo(() => {
     const term = searchTerm.trim();
@@ -38,13 +41,19 @@ export default function UsersPage() {
     return { firstName: term };
   }, [searchTerm]);
 
-  const { data: usersData, isLoading } = useUsers(searchFilters);
-  // Ensure users is always an array
-  const users = Array.isArray(usersData) ? usersData : [];
+  const {
+    data: usersData,
+    isLoading,
+    isFetching,
+  } = useUsers(page, resultsPerPage, searchFilters);
+
+  const users = Array.isArray(usersData?.items) ? usersData?.items : [];
+  const pageInfo = usersData?.pageInfo;
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const restoreUser = useRestoreUser();
   const hardDeleteUser = useHardDeleteUser();
+  const importUsers = useImportUsers();
   const { showSuccess, showError } = useToastContext();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -58,6 +67,8 @@ export default function UsersPage() {
     type: "hard",
     userId: "",
   });
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleCreate = () => {
     setEditingUser(null);
@@ -142,6 +153,36 @@ export default function UsersPage() {
     }
   };
 
+  const handleBulkImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleBulkImportChange: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    importUsers.mutate(file, {
+      onSuccess: (data) => {
+        showSuccess("Import Successful", "Users CSV imported successfully.");
+        console.log("Bulk import response:", data);
+        scrollToTop();
+        // reset input so same file can be selected again if needed
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      },
+      onError: (error) => {
+        const errorMessage = getErrorMessage(error);
+        showError("Import Failed", errorMessage, 8000);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      },
+    });
+  };
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
   const getConfirmModalProps = () => {
     switch (confirmModal.type) {
       case "restore":
@@ -180,10 +221,30 @@ export default function UsersPage() {
           <h1 className="text-3xl font-bold text-gray-900">Users Management</h1>
           <p className="mt-2 text-gray-600">Manage all users and their contacts</p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="w-5 h-5 mr-2" />
-          Create User
-        </Button>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleBulkImportChange}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleBulkImportClick}
+            isLoading={importUsers.isPending}
+            disabled={importUsers.isPending}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Import CSV
+          </Button>
+          <Button onClick={handleCreate}>
+            <Plus className="w-5 h-5 mr-2" />
+            Create User
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -196,6 +257,41 @@ export default function UsersPage() {
         onRestore={handleRestore}
         onHardDelete={handleHardDelete}
       />
+
+      {/* Pagination */}
+      {pageInfo && (
+        <div className="flex items-center justify-between px-2 py-3 text-sm text-gray-600">
+          <div>
+            Page <span className="font-medium">{pageInfo.currentPage}</span> of{" "}
+            <span className="font-medium">{pageInfo.totalPages}</span>
+            {isFetching && <span className="ml-2 text-xs text-gray-400">Updating…</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setPage((p) => Math.max(1, p - 1));
+                scrollToTop();
+              }}
+              disabled={!pageInfo.hasPrevPage}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setPage((p) => p + 1);
+                scrollToTop();
+              }}
+              disabled={!pageInfo.hasNextPage}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Create/Edit Drawer */}
       <Drawer

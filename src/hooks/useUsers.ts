@@ -7,11 +7,16 @@ const QUERY_KEYS = {
   user: (id: string) => ["users", id] as const,
 };
 
-// Get all users (optionally filtered by firstName, email, or phoneNo)
-export function useUsers(filters?: { firstName?: string; email?: string; phoneNo?: string }) {
+// Get all users with pagination (optionally filtered by firstName, email, or phoneNo)
+export function useUsers(
+  page: number,
+  limit: number,
+  filters?: { firstName?: string; email?: string; phoneNo?: string }
+) {
   return useQuery({
-    queryKey: [...QUERY_KEYS.users, filters] as const,
-    queryFn: () => usersApi.getAll(filters),
+    queryKey: [...QUERY_KEYS.users, page, limit, filters] as const,
+    queryFn: () => usersApi.getAll(page, limit, filters),
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -92,6 +97,18 @@ export function useDeleteContact() {
 
   return useMutation({
     mutationFn: (contactId: string) => usersApi.deleteContact(contactId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users });
+    },
+  });
+}
+
+// Bulk import users from CSV
+export function useImportUsers() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => usersApi.importBulk(file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users });
     },

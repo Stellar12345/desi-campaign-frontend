@@ -51,12 +51,18 @@ export function useCampaign(id: string) {
   });
 }
 
-// Get contacts for a specific channel (EMAIL, WHATSAPP, etc.)
-export function useCampaignContacts(channelCode: string) {
+// Get contacts for a specific campaignType (EMAIL, WHATSAPP, EMAIL_AND_WHATSAPP) with pagination
+export function useCampaignContacts(
+  campaignType: string,
+  page: number,
+  limit: number,
+  search?: string
+) {
   return useQuery({
-    queryKey: QUERY_KEYS.contacts(channelCode),
-    queryFn: () => campaignsApi.getContacts(channelCode),
-    enabled: !!channelCode,
+    queryKey: [...QUERY_KEYS.contacts(campaignType), page, limit, search] as const,
+    queryFn: () => campaignsApi.getContacts(campaignType, page, limit, search),
+    placeholderData: (previousData) => previousData,
+    enabled: !!campaignType,
   });
 }
 
@@ -132,7 +138,7 @@ export function useUpdateCampaignContacts() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: { campaignId: string; contacts: string[] }) =>
+    mutationFn: (payload: { campaignId: string; userIds: string[] }) =>
       campaignsApi.addContacts(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.campaigns });
