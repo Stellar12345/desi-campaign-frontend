@@ -51,16 +51,26 @@ export function useCampaign(id: string) {
   });
 }
 
+// Get company cities for dropdown
+export function useCompanyCities() {
+  return useQuery({
+    queryKey: ["company-cities"] as const,
+    queryFn: () => campaignsApi.getCompanyCities(),
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
+}
+
 // Get contacts for a specific campaignType (EMAIL, WHATSAPP, EMAIL_AND_WHATSAPP) with pagination
 export function useCampaignContacts(
   campaignType: string,
   page: number,
   limit: number,
-  search?: string
+  search?: string,
+  companyCity?: string
 ) {
   return useQuery({
-    queryKey: [...QUERY_KEYS.contacts(campaignType), page, limit, search] as const,
-    queryFn: () => campaignsApi.getContacts(campaignType, page, limit, search),
+    queryKey: [...QUERY_KEYS.contacts(campaignType), page, limit, search, companyCity] as const,
+    queryFn: () => campaignsApi.getContacts(campaignType, page, limit, search, companyCity),
     placeholderData: (previousData) => previousData,
     enabled: !!campaignType,
   });

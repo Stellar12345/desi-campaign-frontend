@@ -115,11 +115,11 @@ export function useImportUsers() {
   });
 }
 
-// Get duplicate contacts
-export function useDuplicateContacts(enabled: boolean = false) {
+// Get duplicate contacts (paginated)
+export function useDuplicateContacts(page: number, limit: number, enabled: boolean = false) {
   return useQuery({
-    queryKey: ["duplicate-contacts"] as const,
-    queryFn: () => usersApi.getDuplicateContacts(),
+    queryKey: ["duplicate-contacts", page, limit] as const,
+    queryFn: () => usersApi.getDuplicateContacts(page, limit),
     enabled,
   });
 }

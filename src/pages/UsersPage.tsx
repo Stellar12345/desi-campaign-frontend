@@ -72,6 +72,8 @@ export default function UsersPage() {
     userId: "",
   });
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicatePage, setDuplicatePage] = useState(1);
+  const duplicatePageSize = 10;
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -80,11 +82,13 @@ export default function UsersPage() {
     data: duplicateContactsData,
     refetch: refetchDuplicates,
     isLoading: isLoadingDuplicates,
-  } = useDuplicateContacts();
+  } = useDuplicateContacts(duplicatePage, duplicatePageSize);
 
   // Auto-check for duplicates after import
   const checkForDuplicates = async () => {
     try {
+      // Always start from page 1 when checking right after import
+      setDuplicatePage(1);
       const result = await refetchDuplicates();
       // Handle API response structure: { status, data: { items: [...] } }
       // The API returns: { status: "SUCCESS", data: { items: [...] } }
@@ -215,6 +219,8 @@ export default function UsersPage() {
         showSuccess("Duplicates Deleted", "All duplicate contacts have been deleted successfully.");
         setShowDuplicateModal(false);
         // Refresh duplicates to show updated state
+        // Reset to first page and refresh list
+        setDuplicatePage(1);
         refetchDuplicates();
       },
       onError: (error) => {
@@ -374,7 +380,11 @@ export default function UsersPage() {
         onClose={() => setShowDuplicateModal(false)}
         duplicates={duplicateContactsData}
         onDelete={handleDeleteDuplicates}
-        isDeleting={deleteDuplicateContacts.isPending}
+        isDeleting={deleteDuplicateContacts.isPending || isLoadingDuplicates}
+        onPageChange={(page) => {
+          setDuplicatePage(page);
+          refetchDuplicates();
+        }}
       />
     </div>
   );

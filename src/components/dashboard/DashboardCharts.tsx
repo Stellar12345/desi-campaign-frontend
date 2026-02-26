@@ -168,30 +168,95 @@ export default function DashboardCharts({ data, isLoading }: DashboardChartsProp
           </h3>
         }
       >
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Rates */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
           <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
-            <p className="text-sm font-medium text-gray-600 mb-1">Open Rate</p>
-            <p className="text-2xl font-bold text-blue-600">
+            <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">Delivery Rate</p>
+            <p className="text-xl md:text-2xl font-bold text-blue-600">
+              {data?.rates?.deliveryRate?.toFixed(2) || 0}%
+            </p>
+          </div>
+          <div className="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl">
+            <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">Open Rate</p>
+            <p className="text-xl md:text-2xl font-bold text-indigo-600">
               {data?.rates?.openRate?.toFixed(2) || 0}%
             </p>
           </div>
           <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-            <p className="text-sm font-medium text-gray-600 mb-1">Click Rate</p>
-            <p className="text-2xl font-bold text-green-600">
+            <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">Click Rate</p>
+            <p className="text-xl md:text-2xl font-bold text-green-600">
               {data?.rates?.clickRate?.toFixed(2) || 0}%
             </p>
           </div>
           <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
-            <p className="text-sm font-medium text-gray-600 mb-1">CTR</p>
-            <p className="text-2xl font-bold text-purple-600">
+            <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">CTR</p>
+            <p className="text-xl md:text-2xl font-bold text-purple-600">
               {data?.rates?.clickThroughRate?.toFixed(2) || 0}%
             </p>
           </div>
           <div className="text-center p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl">
-            <p className="text-sm font-medium text-gray-600 mb-1">Failure Rate</p>
-            <p className="text-2xl font-bold text-red-600">
+            <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">Failure Rate</p>
+            <p className="text-xl md:text-2xl font-bold text-red-600">
               {data?.rates?.failureRate?.toFixed(2) || 0}%
             </p>
+          </div>
+          <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl">
+            <p className="text-xs md:text-sm font-medium text-gray-600 mb-1">Unsubscribe Rate</p>
+            <p className="text-xl md:text-2xl font-bold text-yellow-600">
+              {data?.rates?.unsubscribeRate?.toFixed(2) || 0}%
+            </p>
+          </div>
+        </div>
+
+        {/* Engagement details */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-gray-600">
+          <div className="bg-gray-50 rounded-lg p-3 flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-gray-500">
+              Unique Openers
+            </span>
+            <span className="text-lg font-semibold text-gray-900">
+              {data?.engagement?.uniqueOpeners ?? 0}
+            </span>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3 flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-gray-500">
+              Unique Clickers
+            </span>
+            <span className="text-lg font-semibold text-gray-900">
+              {data?.engagement?.uniqueClickers ?? 0}
+            </span>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3 flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-gray-500">
+              Avg Engagement / User
+            </span>
+            <span className="text-lg font-semibold text-gray-900">
+              {data?.engagement?.avgEngagementScorePerUser?.toFixed?.(2) ?? 0}
+            </span>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3 flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-gray-500">
+              Total Replies
+            </span>
+            <span className="text-lg font-semibold text-gray-900">
+              {data?.engagement?.totalReplies ?? 0}
+            </span>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3 flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-gray-500">
+              Total Purchases
+            </span>
+            <span className="text-lg font-semibold text-gray-900">
+              {data?.engagement?.totalPurchases ?? 0}
+            </span>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3 flex flex-col gap-1">
+            <span className="text-xs uppercase tracking-wide text-gray-500">
+              Total Clicks
+            </span>
+            <span className="text-lg font-semibold text-gray-900">
+              {data?.engagement?.totalClicks ?? 0}
+            </span>
           </div>
         </div>
       </Card>

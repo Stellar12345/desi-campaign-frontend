@@ -92,13 +92,22 @@ export const campaignsApi = {
     return response.data; // Return full response including data, message, etc.
   },
 
+  // Get company cities dropdown
+  getCompanyCities: async (): Promise<string[]> => {
+    const response = await apiClient.get<ApiResponse<string[]>>(
+      "/private/bulk/company-cities-dropdown"
+    );
+    return response.data.data || [];
+  },
+
   // Get contacts for campaign, filtered by campaignType (EMAIL, WHATSAPP, EMAIL_AND_WHATSAPP)
   // Uses the bulk users endpoint: /private/bulk?campaignType=...&page=...&limit=...
   getContacts: async (
     campaignType: string,
     page: number,
     limit: number,
-    search?: string
+    search?: string,
+    companyCity?: string
   ): Promise<{
     items: User[];
     pageInfo?: {
@@ -119,6 +128,9 @@ export const campaignsApi = {
     params.set("limit", String(limit));
     if (search && search.trim().length > 0) {
       params.set("search", search.trim());
+    }
+    if (companyCity && companyCity.trim().length > 0) {
+      params.set("companyCity", companyCity.trim());
     }
 
     const response = await apiClient.get<

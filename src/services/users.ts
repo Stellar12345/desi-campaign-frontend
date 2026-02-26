@@ -300,10 +300,17 @@ export const usersApi = {
     return response.data;
   },
 
-  // Get duplicate contacts
-  getDuplicateContacts: async (): Promise<ApiResponse<unknown>> => {
+  // Get duplicate contacts (paginated)
+  getDuplicateContacts: async (
+    page: number = 1,
+    limit: number = 10
+  ): Promise<ApiResponse<unknown>> => {
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("limit", String(limit));
+
     const response = await apiClient.get<ApiResponse<unknown>>(
-      "/private/bulk/duplicate-contacts"
+      `/private/bulk/duplicate-contacts?${params.toString()}`
     );
     return response.data;
   },

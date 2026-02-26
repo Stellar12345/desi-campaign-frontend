@@ -21,12 +21,19 @@ export default function Dashboard() {
 
   const { data, isLoading } = useCampaignSummary(startDate, toDate);
 
+  // Top-level admin overview cards
   const stats = [
     {
       name: "Total Users",
       value: data?.users?.total ?? 0,
       icon: Users,
       color: "bg-[#E9488A]",
+    },
+    {
+      name: "Active Users",
+      value: data?.users?.active ?? 0,
+      icon: Users,
+      color: "bg-[#60A5FA]",
     },
     {
       name: "Total Contacts",
@@ -39,12 +46,6 @@ export default function Dashboard() {
       value: data?.campaigns?.total ?? 0,
       icon: Mail,
       color: "bg-[#F3B44C]",
-    },
-    {
-      name: "Delivery Rate",
-      value: `${data?.rates?.deliveryRate?.toFixed?.(2) ?? 0}%`,
-      icon: BarChart3,
-      color: "bg-[#FFD465]",
     },
   ];
 
@@ -124,24 +125,99 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        {/* Admin summary blocks */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Today */}
           <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-            <p className="text-sm text-gray-500 mb-1">Today – Campaigns Sent</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {data?.today?.campaignsSent ?? 0}
-            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Today</p>
+            <div className="space-y-1 text-sm text-gray-600">
+              <div className="flex justify-between">
+                <span>Campaigns Sent</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.today?.campaignsSent ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Deliveries Sent</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.today?.deliveriesSent ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>New Contacts</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.today?.newContacts ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Opt-outs</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.today?.optOuts ?? 0}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* This Month */}
           <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-            <p className="text-sm text-gray-500 mb-1">This Month – Deliveries Sent</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {data?.thisMonth?.deliveriesSent ?? 0}
-            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">This Month</p>
+            <div className="space-y-1 text-sm text-gray-600">
+              <div className="flex justify-between">
+                <span>Campaigns Sent</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.thisMonth?.campaignsSent ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Deliveries Sent</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.thisMonth?.deliveriesSent ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>New Contacts</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.thisMonth?.newContacts ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Opt-outs</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.thisMonth?.optOuts ?? 0}
+                </span>
+              </div>
+            </div>
           </div>
+
+          {/* Engagement Totals */}
           <div className="p-4 rounded-xl bg-gray-50 border border-gray-100">
-            <p className="text-sm text-gray-500 mb-1">Total Opens</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {data?.engagement?.totalOpens ?? 0}
-            </p>
+            <p className="text-sm font-medium text-gray-700 mb-2">Engagement Totals</p>
+            <div className="space-y-1 text-sm text-gray-600">
+              <div className="flex justify-between">
+                <span>Total Opens</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.engagement?.totalOpens ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Clicks</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.engagement?.totalClicks ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Replies</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.engagement?.totalReplies ?? 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Purchases</span>
+                <span className="font-semibold text-gray-900">
+                  {data?.engagement?.totalPurchases ?? 0}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
