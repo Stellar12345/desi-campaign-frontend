@@ -299,4 +299,20 @@ export const usersApi = {
 
     return response.data;
   },
+
+  // Get duplicate contacts
+  getDuplicateContacts: async (): Promise<ApiResponse<unknown>> => {
+    const response = await apiClient.get<ApiResponse<unknown>>(
+      "/private/bulk/duplicate-contacts"
+    );
+    return response.data;
+  },
+
+  // Delete duplicate contacts
+  deleteDuplicateContacts: async (): Promise<ApiResponse<unknown>> => {
+    const response = await apiClient.delete<ApiResponse<unknown>>(
+      "/private/bulk/duplicate-contacts"
+    );
+    return response.data;
+  },
 };

@@ -5,6 +5,7 @@ import Drawer from "@/components/ui/Drawer";
 import UserTable from "@/components/users/UserTable";
 import UserForm from "@/components/users/UserForm";
 import ConfirmModal from "@/components/users/ConfirmModal";
+import DuplicateContactsModal from "@/components/users/DuplicateContactsModal";
 import {
   useUsers,
   useCreateUser,
@@ -12,6 +13,8 @@ import {
   useRestoreUser,
   useHardDeleteUser,
   useImportUsers,
+  useDuplicateContacts,
+  useDeleteDuplicateContacts,
 } from "@/hooks/useUsers";
 import { useToastContext } from "@/contexts/ToastContext";
 import { getErrorMessage } from "@/utils/format";
@@ -54,6 +57,7 @@ export default function UsersPage() {
   const restoreUser = useRestoreUser();
   const hardDeleteUser = useHardDeleteUser();
   const importUsers = useImportUsers();
+  const deleteDuplicateContacts = useDeleteDuplicateContacts();
   const { showSuccess, showError } = useToastContext();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -67,8 +71,33 @@ export default function UsersPage() {
     type: "hard",
     userId: "",
   });
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Check for duplicates - disabled by default, only fetch when needed
+  const {
+    data: duplicateContactsData,
+    refetch: refetchDuplicates,
+    isLoading: isLoadingDuplicates,
+  } = useDuplicateContacts();
+
+  // Auto-check for duplicates after import
+  const checkForDuplicates = async () => {
+    try {
+      const result = await refetchDuplicates();
+      // Handle API response structure: { status, data: { items: [...] } }
+      // The API returns: { status: "SUCCESS", data: { items: [...] } }
+      const responseData = result.data;
+      const items = responseData?.data?.items || responseData?.items || [];
+      
+      if (Array.isArray(items) && items.length > 0) {
+        setShowDuplicateModal(true);
+      }
+    } catch (error) {
+      console.error("Error checking for duplicates:", error);
+    }
+  };
 
   const handleCreate = () => {
     setEditingUser(null);
@@ -162,17 +191,35 @@ export default function UsersPage() {
     if (!file) return;
 
     importUsers.mutate(file, {
-      onSuccess: (data) => {
+      onSuccess: async (data) => {
         showSuccess("Import Successful", "Users CSV imported successfully.");
         console.log("Bulk import response:", data);
         scrollToTop();
         // reset input so same file can be selected again if needed
         if (fileInputRef.current) fileInputRef.current.value = "";
+        
+        // Check for duplicates after successful import
+        await checkForDuplicates();
       },
       onError: (error) => {
         const errorMessage = getErrorMessage(error);
         showError("Import Failed", errorMessage, 8000);
         if (fileInputRef.current) fileInputRef.current.value = "";
+      },
+    });
+  };
+
+  const handleDeleteDuplicates = () => {
+    deleteDuplicateContacts.mutate(undefined, {
+      onSuccess: () => {
+        showSuccess("Duplicates Deleted", "All duplicate contacts have been deleted successfully.");
+        setShowDuplicateModal(false);
+        // Refresh duplicates to show updated state
+        refetchDuplicates();
+      },
+      onError: (error) => {
+        const errorMessage = getErrorMessage(error);
+        showError("Delete Failed", errorMessage, 6000);
       },
     });
   };
@@ -319,6 +366,15 @@ export default function UsersPage() {
         onClose={() => setConfirmModal({ isOpen: false, type: "hard", userId: "" })}
         onConfirm={handleConfirm}
         {...getConfirmModalProps()}
+      />
+
+      {/* Duplicate Contacts Modal */}
+      <DuplicateContactsModal
+        isOpen={showDuplicateModal}
+        onClose={() => setShowDuplicateModal(false)}
+        duplicates={duplicateContactsData}
+        onDelete={handleDeleteDuplicates}
+        isDeleting={deleteDuplicateContacts.isPending}
       />
     </div>
   );

@@ -114,3 +114,25 @@ export function useImportUsers() {
     },
   });
 }
+
+// Get duplicate contacts
+export function useDuplicateContacts(enabled: boolean = false) {
+  return useQuery({
+    queryKey: ["duplicate-contacts"] as const,
+    queryFn: () => usersApi.getDuplicateContacts(),
+    enabled,
+  });
+}
+
+// Delete duplicate contacts
+export function useDeleteDuplicateContacts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => usersApi.deleteDuplicateContacts(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.users });
+      queryClient.invalidateQueries({ queryKey: ["duplicate-contacts"] });
+    },
+  });
+}
