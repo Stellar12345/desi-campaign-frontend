@@ -69,7 +69,11 @@ export default function CampaignWizard({ campaignId }: CampaignWizardProps) {
         <div className="mb-8">
           <button
             type="button"
-            onClick={() => navigate("/campaigns")}
+            onClick={() =>
+              navigate(
+                `/campaigns?channel=${(wizardData.basicInfo.channelCode || "EMAIL").toLowerCase()}`
+              )
+            }
             className="flex items-center gap-3 text-3xl font-bold text-gray-900 mb-2 hover:text-gray-700 transition-colors group"
           >
             <ArrowLeft className="w-8 h-8 group-hover:-translate-x-1 transition-transform" />

@@ -14,6 +14,8 @@ import { getErrorMessage } from "@/utils/format";
 import Button from "@/components/ui/Button";
 import Skeleton from "@/components/ui/Skeleton";
 import { cn } from "@/utils/cn";
+import Modal from "@/components/ui/Modal";
+import { campaignsApi } from "@/services/campaigns";
 
 interface StepContactsProps {
   onNext: () => void;
@@ -35,6 +37,16 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
   const contactsLimit = 10;
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCompanyCity, setSelectedCompanyCity] = useState("");
+  const [isSelectingAllContacts, setIsSelectingAllContacts] = useState(false);
+  const [selectProgress, setSelectProgress] = useState<{ loaded: number; total: number }>({
+    loaded: 0,
+    total: 0,
+  });
+  const [showSelectSummary, setShowSelectSummary] = useState(false);
+  const [selectSummary, setSelectSummary] = useState<{ selected: number; total: number }>({
+    selected: 0,
+    total: 0,
+  });
 
   const { data: companyCities = [] } = useCompanyCities();
   const {
@@ -83,12 +95,96 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
     );
   };
 
-  const handleSelectAll = () => {
-    if (selectedContacts.length === filteredContacts.length) {
-      setSelectedContacts([]);
+  // Select / deselect all contacts on the current page
+  const isCurrentPageFullySelected =
+    filteredContacts.length > 0 &&
+    filteredContacts.every((c) => selectedContacts.includes(c.id));
+
+  // All contacts (across all pages for current filters) selected
+  const totalMatchingContacts = contactsPageInfo?.totalResults ?? undefined;
+  const isAllContactsSelected =
+    typeof totalMatchingContacts === "number" &&
+    totalMatchingContacts > 0 &&
+    selectedContacts.length >= totalMatchingContacts;
+
+  // Show \"Deselect All\" whenever there is at least one selected contact
+  const showDeselectAll = selectedContacts.length > 0;
+
+  const handleToggleSelectCurrentPage = () => {
+    if (isCurrentPageFullySelected) {
+      // Remove only current-page contacts from selection
+      const currentIds = new Set(filteredContacts.map((c) => c.id));
+      setSelectedContacts((prev) => prev.filter((id) => !currentIds.has(id)));
     } else {
-      setSelectedContacts(filteredContacts.map((c) => c.id));
+      // Add all current-page contacts to selection (keep existing selections)
+      const currentIds = filteredContacts.map((c) => c.id);
+      setSelectedContacts((prev) => Array.from(new Set([...prev, ...currentIds])));
     }
+  };
+
+  // Select all contacts across all pages for current filters
+  const handleSelectAllAcrossPages = async () => {
+    setIsSelectingAllContacts(true);
+    try {
+      const allIds = new Set<string>();
+
+      // Fetch first page to read pagination info
+      const firstPage = await campaignsApi.getContacts(
+        channelCode,
+        1,
+        contactsLimit,
+        searchTerm,
+        selectedCompanyCity
+      );
+
+      firstPage.items.forEach((item: any) => {
+        if (item.id) allIds.add(item.id);
+      });
+
+      const totalPages = firstPage.pageInfo?.totalPages ?? 1;
+      const totalResults = firstPage.pageInfo?.totalResults ?? firstPage.items.length;
+
+      // initialise streaming progress
+      setSelectProgress({
+        loaded: firstPage.items.length,
+        total: totalResults,
+      });
+
+      for (let page = 2; page <= totalPages; page++) {
+        const resp = await campaignsApi.getContacts(
+          channelCode,
+          page,
+          contactsLimit,
+          searchTerm,
+          selectedCompanyCity
+        );
+        resp.items.forEach((item: any) => {
+          if (item.id) allIds.add(item.id);
+        });
+
+        setSelectProgress((prev) => ({
+          loaded: Math.min(prev.loaded + resp.items.length, totalResults),
+          total: totalResults,
+        }));
+      }
+
+      setSelectedContacts(Array.from(allIds));
+      setSelectSummary({
+        selected: allIds.size,
+        total: totalResults,
+      });
+      setShowSelectSummary(true);
+    } catch (error) {
+      console.error("Failed to select all contacts across pages:", error);
+      const errorMessage = getErrorMessage(error);
+      showError("Select All Failed", errorMessage, 6000);
+    } finally {
+      setIsSelectingAllContacts(false);
+    }
+  };
+
+  const handleClearAllSelection = () => {
+    setSelectedContacts([]);
   };
 
   const handleNext = async () => {
@@ -289,16 +385,52 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
           </div>
         </div>
 
-        {/* Select All */}
+        {/* Bulk selection */}
         {filteredContacts.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={handleSelectAll}
+              onClick={handleToggleSelectCurrentPage}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
-              {selectedContacts.length === filteredContacts.length ? "Deselect All" : "Select All"}
+              {isCurrentPageFullySelected ? "Deselect This Page" : "Select This Page"}
             </button>
+            <span className="text-gray-300">|</span>
+            <button
+              type="button"
+              onClick={handleSelectAllAcrossPages}
+              className={cn(
+                "text-sm font-medium",
+                isSelectingAllContacts || isAllContactsSelected
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-blue-600 hover:text-blue-700"
+              )}
+              disabled={isSelectingAllContacts || isAllContactsSelected}
+            >
+              {isSelectingAllContacts
+                ? "Selecting all…"
+                : isAllContactsSelected
+                ? "All Contacts Selected"
+                : "Select All Contacts (All Pages)"}
+            </button>
+            {showDeselectAll && (
+              <>
+                <span className="text-gray-300">|</span>
+                <button
+                  type="button"
+                  onClick={handleClearAllSelection}
+                  className="text-sm text-red-600 hover:text-red-700 font-medium"
+                >
+                  Deselect All
+                </button>
+              </>
+            )}
+
+            {isSelectingAllContacts && selectProgress.total > 0 && (
+              <span className="text-xs text-gray-500">
+                Selecting contacts… {selectProgress.loaded}/{selectProgress.total}
+              </span>
+            )}
           </div>
         )}
 
@@ -401,8 +533,8 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
           >
             Save Draft
           </Button>
-          <Button 
-            onClick={handleNext} 
+          <Button
+            onClick={handleNext}
             disabled={selectedContacts.length === 0 || isSavingDraft}
             isLoading={isSavingDraft}
           >
@@ -410,6 +542,34 @@ export default function StepContacts({ onNext, onPrevious }: StepContactsProps) 
           </Button>
         </div>
       </div>
+
+      {/* Selection summary modal for \"Select All Contacts (All Pages)\" */}
+      <Modal
+        isOpen={showSelectSummary}
+        onClose={() => setShowSelectSummary(false)}
+        title="Contacts Selected"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-700">
+            You have selected{" "}
+            <span className="font-semibold">{selectSummary.selected}</span> of{" "}
+            <span className="font-semibold">{selectSummary.total}</span> matching contacts.
+          </p>
+          <div className="flex items-center justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                handleClearAllSelection();
+                setShowSelectSummary(false);
+              }}
+            >
+              Deselect All
+            </Button>
+            <Button onClick={() => setShowSelectSummary(false)}>Keep Selection</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -1,12 +1,13 @@
-import { BrowserRouter, Routes, Route, useParams, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams, useSearchParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CampaignWizardProvider } from "@/contexts/CampaignWizardContext";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "@/components/layout/Layout";
 import Dashboard from "@/pages/Dashboard";
 import UsersPage from "@/pages/UsersPage";
 import UserDetailsPage from "@/pages/UserDetailsPage";
 import CampaignWizard from "@/components/campaigns/wizard/CampaignWizard";
+import WhatsappCampaignWizard from "@/components/campaigns/whatsapp/WhatsappCampaignWizard";
 import CampaignsPage from "@/pages/CampaignsPage";
 import CampaignSummaryPage from "@/pages/CampaignSummaryPage";
 import PublishedCampaignsPage from "@/pages/PublishedCampaignsPage";
@@ -14,13 +15,14 @@ import LoginPage from "@/pages/LoginPage";
 import { useCampaign } from "@/hooks/useCampaigns";
 import Skeleton from "@/components/ui/Skeleton";
 import { ToastProvider } from "@/contexts/ToastContext";
+import ProtectedRoute from "@/routes/ProtectedRoute";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
       retry: (failureCount, error: unknown) => {
-        // Don't retry on 401 - will redirect to login
+        // Don't retry on 401 — apiClient will redirect to login (avoids infinite retry)
         const status = (error as { response?: { status?: number } })?.response?.status;
         if (status === 401) return false;
         return failureCount < 1;
@@ -28,14 +30,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  return <>{children}</>;
-}
 
 function CampaignWizardWrapper() {
   const { id } = useParams<{ id?: string }>();
@@ -63,6 +57,22 @@ function CampaignWizardWrapper() {
   );
 }
 
+/**
+ * Channel-aware wrapper for new campaign creation.
+ * - ?channel=whatsapp -> WhatsApp Campaign wizard
+ * - otherwise        -> Email Campaign wizard (existing flow)
+ */
+function NewCampaignWizardRouter() {
+  const [searchParams] = useSearchParams();
+  const channel = (searchParams.get("channel") || "email").toLowerCase();
+
+  if (channel === "whatsapp") {
+    return <WhatsappCampaignWizard />;
+  }
+
+  return <CampaignWizardWrapper />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -75,7 +85,7 @@ function App() {
                 path="/campaigns/new"
                 element={
                   <ProtectedRoute>
-                    <CampaignWizardWrapper />
+                    <NewCampaignWizardRouter />
                   </ProtectedRoute>
                 }
               />

@@ -1,10 +1,16 @@
+/**
+ * Centralized API client (axios instance) for all HTTP requests.
+ * All API calls (dashboard, campaigns, templates, users, etc.) should use this client.
+ * - Automatically attaches Authorization: Bearer <accessToken> for protected routes.
+ * - Global response interceptor: on 401 TOKEN_EXPIRED, clears session and redirects to /login.
+ * - Prevents infinite retry loops by not retrying on token-expired or auth errors.
+ */
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import type { ApiResponse } from "@/types";
 import { authApi } from "./auth";
 
 const API_BASE_URL = "https://api.desi-campaign-backend.stellarsolutions.org";
 
-// Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -33,23 +39,30 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
+/** Clear session and redirect to login. Ensures UI does not stay in authenticated state. */
 const redirectToLogin = () => {
   authApi.clearTokens();
   window.location.replace("/login");
 };
 
-// Request interceptor
+/** Backend returned 401 with TOKEN_EXPIRED — do not retry or refresh, just logout. */
+const isTokenExpiredResponse = (data: unknown): boolean => {
+  if (data == null || typeof data !== "object") return false;
+  const d = data as { statusCode?: string; message?: string };
+  return (
+    d.statusCode === "TOKEN_EXPIRED" ||
+    d.message === "Access token expired. Use refresh token to get a new one."
+  );
+};
+
+// --- Request interceptor: attach Bearer token for all non-public requests ---
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = authApi.getAccessToken();
     const url = config.url ?? "";
 
-    // Don't add auth header for public auth routes
-    if (isPublicAuthRoute(url)) {
-      return config;
-    }
+    if (isPublicAuthRoute(url)) return config;
 
-    // Protected routes require a token - redirect to login if missing
     if (isProtectedRoute(url) && !token) {
       redirectToLogin();
       return Promise.reject(new Error("No auth token - redirecting to login"));
@@ -85,10 +98,20 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
     if (error.response?.status === 401 && originalRequest) {
-      const statusCode = (error.response.data as any)?.statusCode;
-      const message = error.response.data?.message;
+      const data = error.response.data as { statusCode?: string; message?: string } | undefined;
+      const statusCode = data?.statusCode;
+      const message = data?.message;
 
-      // If backend says admin user no longer exists, force logout immediately (no refresh)
+      // 401 TOKEN_EXPIRED: clear session and redirect to login (no refresh, no retry — prevents loops)
+      if (isTokenExpiredResponse(data)) {
+        // Helpful debug log; remove or lower log level in production if too noisy
+        // eslint-disable-next-line no-console
+        console.log("Access token expired — logging out user");
+        redirectToLogin();
+        return Promise.reject(error);
+      }
+
+      // Admin user no longer exists — force logout immediately (no refresh)
       if (statusCode === "ADMIN_USER_NOT_FOUND" || message === "User not found.") {
         redirectToLogin();
         return Promise.reject(error);

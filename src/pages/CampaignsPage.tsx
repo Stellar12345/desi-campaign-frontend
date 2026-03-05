@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Edit, Send, Trash2 } from "lucide-react";
 import { useCampaigns, useDeleteCampaign } from "@/hooks/useCampaigns";
 import Button from "@/components/ui/Button";
@@ -12,6 +12,7 @@ import type { Campaign } from "@/types";
 
 export default function CampaignsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   // Get only DRAFT campaigns from API
   const { data: campaignsData, isLoading } = useCampaigns("DRAFT");
   const deleteCampaign = useDeleteCampaign();
@@ -23,8 +24,12 @@ export default function CampaignsPage() {
   // Ensure campaigns is always an array
   const draftCampaigns = Array.isArray(campaignsData) ? campaignsData : [];
 
-  // Local filter for campaign channel (EMAIL vs WHATSAPP)
-  const [channelFilter, setChannelFilter] = useState<"EMAIL" | "WHATSAPP">("EMAIL");
+  // Local filter for campaign channel (EMAIL vs WHATSAPP), initialised from ?channel=
+  const initialChannelFromUrl = (searchParams.get("channel") || "email").toUpperCase();
+  const initialChannel: "EMAIL" | "WHATSAPP" =
+    initialChannelFromUrl === "WHATSAPP" ? "WHATSAPP" : "EMAIL";
+
+  const [channelFilter, setChannelFilter] = useState<"EMAIL" | "WHATSAPP">(initialChannel);
   const filteredCampaigns = draftCampaigns.filter((c) => c.channelCode === channelFilter);
 
   const getStatusBadge = (status: string) => {
@@ -100,7 +105,10 @@ export default function CampaignsPage() {
           <div className="inline-flex rounded-full bg-gray-100 p-1">
             <button
               type="button"
-              onClick={() => setChannelFilter("EMAIL")}
+              onClick={() => {
+                setChannelFilter("EMAIL");
+                setSearchParams({ channel: "email" });
+              }}
               className={`px-3 py-1 text-sm font-medium rounded-full transition-colors ${
                 channelFilter === "EMAIL"
                   ? "bg-white shadow text-[#E9488A]"
@@ -111,33 +119,28 @@ export default function CampaignsPage() {
             </button>
             <button
               type="button"
-              onClick={() => setChannelFilter("WHATSAPP")}
-              className={`px-3 py-1 text-sm font-medium rounded-full transition-colors relative ${
+              onClick={() => {
+                setChannelFilter("WHATSAPP");
+                setSearchParams({ channel: "whatsapp" });
+              }}
+              className={`px-3 py-1 text-sm font-medium rounded-full transition-colors ${
                 channelFilter === "WHATSAPP"
                   ? "bg-white shadow text-[#F3B44C]"
                   : "text-gray-600 hover:text-gray-900"
               }`}
             >
               WhatsApp
-              <span className="ml-1.5 text-xs text-gray-400">(Coming Soon)</span>
             </button>
           </div>
 
-          {channelFilter === "EMAIL" ? (
-            <Button
-              onClick={() =>
-                navigate(`/campaigns/new?channel=${channelFilter.toLowerCase()}`)
-              }
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              Create Email Campaign
-            </Button>
-          ) : (
-            <Button disabled>
-              <Plus className="w-5 h-5 mr-2" />
-              Coming Soon
-            </Button>
-          )}
+          <Button
+            onClick={() =>
+              navigate(`/campaigns/new?channel=${channelFilter.toLowerCase()}`)
+            }
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            {channelFilter === "EMAIL" ? "Create Email Campaign" : "Create WhatsApp Campaign"}
+          </Button>
         </div>
       </div>
 
@@ -155,26 +158,22 @@ export default function CampaignsPage() {
               <Plus className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {channelFilter === "EMAIL" ? "No draft campaigns yet" : "WhatsApp Campaigns Coming Soon"}
+              {channelFilter === "EMAIL"
+                ? "No draft email campaigns yet"
+                : "No draft WhatsApp campaigns yet"}
             </h3>
             <p className="text-gray-600 mb-4">
-              {channelFilter === "EMAIL" 
+              {channelFilter === "EMAIL"
                 ? "Get started by creating your first email campaign."
-                : "WhatsApp campaign creation will be available soon. Stay tuned!"}
+                : "Get started by creating your first WhatsApp campaign."}
             </p>
-            {channelFilter === "EMAIL" ? (
-              <Button
-                onClick={() =>
-                  navigate(`/campaigns/new?channel=${channelFilter.toLowerCase()}`)
-                }
-              >
-                Create Email Campaign
-              </Button>
-            ) : (
-              <Button disabled>
-                Coming Soon
-              </Button>
-            )}
+            <Button
+              onClick={() =>
+                navigate(`/campaigns/new?channel=${channelFilter.toLowerCase()}`)
+              }
+            >
+              {channelFilter === "EMAIL" ? "Create Email Campaign" : "Create WhatsApp Campaign"}
+            </Button>
           </div>
         </div>
       ) : (
