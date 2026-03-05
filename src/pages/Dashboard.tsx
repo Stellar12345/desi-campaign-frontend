@@ -1,4 +1,4 @@
-import { Users, UserPlus, Mail, BarChart3, Calendar } from "lucide-react";
+import { Users, UserPlus, Mail, Calendar } from "lucide-react";
 import { useCampaignSummary } from "@/hooks/useCampaigns";
 import { useState } from "react";
 import DashboardCharts from "@/components/dashboard/DashboardCharts";

@@ -92,7 +92,7 @@ export default function UsersPage() {
       const result = await refetchDuplicates();
       // Handle API response structure: { status, data: { items: [...] } }
       // The API returns: { status: "SUCCESS", data: { items: [...] } }
-      const responseData = result.data;
+      const responseData: any = result.data;
       const items = responseData?.data?.items || responseData?.items || [];
       
       if (Array.isArray(items) && items.length > 0) {
